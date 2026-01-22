@@ -2,6 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 type Props = {
 	title?: string;
@@ -10,25 +11,37 @@ type Props = {
 export default function Navbar({ title = "CashSpace" }: Props) {
 	return (
         <header className="w-full bg-white sticky top-0 z-50 shadow-lg">
-        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-0">
+        <div className="max-w-screen-xl mx-auto px-2">
             <nav className="flex h-16 items-center justify-between">
             <div className="flex items-center">
+                <Link href="/">
                 <Image
                 src="/logo.png"
                 alt={title}
                 width={264}
                 height={64}
                 priority
-                className="object-contain"
+                className="object-contain cursor-pointer"
                 />
+                </Link>
             </div>
-            <div>
+            <div className="flex gap-4">
+                <Link href="/register">
                 <button
                 type="button"
                 className="inline-flex items-center px-4 py-2 rounded-md border border-[#009689] shadow-sm bg-white text-[#009689] hover:bg-[#009689] hover:text-white cursor-pointer transition"
                 >
-                Sign in
+                Sign Up
                 </button>
+                </Link>
+                <Link href="/login">
+                <button
+                type="button"
+                className="inline-flex items-center px-4 py-2 rounded-md border border-[#009689] shadow-sm bg-[#009689] text-white hover:bg-white hover:text-[#009689] cursor-pointer transition"
+                >
+                Sign In
+                </button>
+                </Link>
             </div>
             </nav>
         </div>

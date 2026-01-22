@@ -1,5 +1,6 @@
 import Navbar from "../components/Navbar";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -20,10 +21,14 @@ export default function Home() {
           </p>
 
           <div className="mt-20 flex items-center justify-center gap-4">
+            <Link href="/register">
             <button className="rounded-[14px] bg-gradient-to-r from-[#009689] to-[#009966] text-white px-6 py-3 shadow-md hover:scale-105 cursor-pointer transition-transform duration-300 ease-in-out">
               Get Started Free →
             </button>
+            </Link>
+            <Link href="/login">
             <button className="rounded-[14px] bg-white shadow-lg px-5 py-3 hover:scale-105 cursor-pointer transition-transform duration-300 ease-in-out">Sign In</button>
+            </Link>
           </div>
 
           <div className="mt-25 grid grid-cols-3 gap-20 text-center max-w-7xl mx-auto">
@@ -155,7 +160,7 @@ export default function Home() {
       <footer className="mt-16 bg-[#071427] text-slate-300">
       <div className="max-w-6xl mx-auto border-t border-slate-800 py-6">
         <div className="text-center text-sm">
-          © 2025 FinanceFlow. All rights reserved. Your partner in financial success.
+          © 2025 CashSpace. All rights reserved. Your partner in financial success.
         </div>
       </div>
       </footer>
