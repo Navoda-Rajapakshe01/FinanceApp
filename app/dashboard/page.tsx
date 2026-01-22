@@ -1,173 +1,220 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { Bell, LogOut, TrendingUp, TrendingDown, DollarSign, PieChart, BarChart3, Wallet } from "lucide-react";
+import Image from "next/image";
+import {
+  Bell,
+  LogOut,
+  TrendingUp,
+  TrendingDown,
+  PieChart,
+  Wallet,
+} from "lucide-react";
+import OverviewView from "@/components/OverviewView";
+import ExpensesView from "@/components/ExpensesView";
+import IncomesView from "@/components/IncomesView";
+import GoalsView from "@/components/GoalsView";
+import InsightsView from "@/components/InsightsView";
+import ConsultantsView from "@/components/ConsultantsView";
 
 export default function DashboardPage() {
-	const userName = "User"; // This would come from backend/auth
+  const userName = "User"; // This would come from backend/auth
+  const [activeTab, setActiveTab] = useState("overview");
 
-	return (
-		<div className="min-h-screen bg-gray-50">
-			{/* Header */}
-			<header className="bg-white shadow-sm sticky top-0 z-50">
-				<div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-					<div>
-						<div className="flex items-center gap-2">
-							<div className="w-8 h-8 bg-teal-500 rounded-lg flex items-center justify-center">
-								<span className="text-white font-bold text-lg">C</span>
-							</div>
-							<h1 className="text-xl font-bold text-gray-900">CashSpace</h1>
-						</div>
-						<p className="text-sm text-gray-600 mt-1">Welcome back, {userName}</p>
-					</div>
-					<div className="flex items-center gap-4">
-						<button className="relative p-2 text-gray-600 hover:text-gray-900">
-							<Bell size={20} />
-							<span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-						</button>
-						<Link href="/">
-							<button className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg">
-								<LogOut size={18} />
-								<span className="text-sm">Logout</span>
-							</button>
-						</Link>
-					</div>
-				</div>
-			</header>
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="w-full bg-white sticky top-0 z-50 shadow-lg">
+        <div className="max-w-screen-xl mx-auto px-2">
+          <nav className="flex h-16 items-center justify-between">
+            <div className="flex items-center">
+              <Link href="/">
+                <Image
+                  src="/logo.png"
+                  alt="CashSpace"
+                  width={264}
+                  height={64}
+                  priority
+                  className="object-contain cursor-pointer"
+                />
+              </Link>
+            </div>
+            <div className="flex items-center gap-8">
+              <button className="relative p-2 text-gray-600 hover:text-gray-900">
+                <Bell size={20} />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              </button>
+              <Link href="/">
+                <button className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg transition">
+                  <LogOut size={18} />
+                  <span className="text-sm">Logout</span>
+                </button>
+              </Link>
+            </div>
+          </nav>
+        </div>
+      </header>
 
-			{/* Main Content */}
-			<main className="max-w-7xl mx-auto px-6 py-8">
-				{/* Summary Cards */}
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-					{/* Total Income */}
-					<div className="bg-white rounded-xl shadow-sm p-6">
-						<div className="flex items-center justify-between mb-2">
-							<p className="text-sm text-gray-600">Total Income</p>
-							<TrendingUp size={18} className="text-green-500" />
-						</div>
-						<h2 className="text-3xl font-bold text-gray-900">LKR 0.00</h2>
-						<p className="text-xs text-gray-500 mt-1">January 2026</p>
-					</div>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Welcome Message */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 bg-clip-text text-transparent">
+            Welcome back, {userName}!
+          </h1>
+          <p className="text-gray-600 mt-2 text-lg">
+            Here's your financial overview for January 2026{" "}
+          </p>
+        </div>
 
-					{/* Total Expenses */}
-					<div className="bg-white rounded-xl shadow-sm p-6">
-						<div className="flex items-center justify-between mb-2">
-							<p className="text-sm text-gray-600">Total Expenses</p>
-							<TrendingDown size={18} className="text-red-500" />
-						</div>
-						<h2 className="text-3xl font-bold text-gray-900">LKR 0.00</h2>
-						<p className="text-xs text-gray-500 mt-1">January 2026</p>
-					</div>
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Total Income */}
+          <div className="relative bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-lg p-6 border-2 border-green-200 hover:shadow-xl transition-shadow group overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-green-200 rounded-full blur-3xl opacity-30 group-hover:opacity-50 transition"></div>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <TrendingUp size={24} className="text-white" />
+                </div>
+                <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                  +0%
+                </span>
+              </div>
+              <p className="text-sm font-medium text-green-700 mb-1">
+                Total Income
+              </p>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                LKR 0.00
+              </h2>
+              <p className="text-xs text-gray-600">January 2026</p>
+            </div>
+          </div>
 
-					{/* Current Balance */}
-					<div className="bg-gradient-to-r from-teal-500 to-green-500 rounded-xl shadow-sm p-6 text-white">
-						<div className="flex items-center justify-between mb-2">
-							<p className="text-sm">Current Balance</p>
-							<DollarSign size={18} />
-						</div>
-						<h2 className="text-3xl font-bold">LKR 0.00</h2>
-						<p className="text-xs mt-1 opacity-90">No balance yet</p>
-					</div>
-				</div>
+          {/* Total Expenses */}
+          <div className="relative bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl shadow-lg p-6 border-2 border-orange-200 hover:shadow-xl transition-shadow group overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-200 rounded-full blur-3xl opacity-30 group-hover:opacity-50 transition"></div>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <TrendingDown size={24} className="text-white" />
+                </div>
+                <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-semibold rounded-full">
+                  0%
+                </span>
+              </div>
+              <p className="text-sm font-medium text-orange-700 mb-1">
+                Total Expenses
+              </p>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                LKR 0.00
+              </h2>
+              <p className="text-xs text-gray-600">January 2026</p>
+            </div>
+          </div>
 
-				{/* Navigation Tabs */}
-				<div className="bg-white rounded-xl shadow-sm mb-8">
-					<div className="flex items-center gap-8 px-6 py-4 border-b overflow-x-auto">
-						<button className="flex items-center gap-2 text-teal-600 font-medium pb-1 border-b-2 border-teal-600 whitespace-nowrap">
-							<PieChart size={18} />
-							Overview
-						</button>
-						<button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 whitespace-nowrap">
-							<TrendingDown size={18} />
-							Expenses
-						</button>
-						<button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 whitespace-nowrap">
-							<TrendingUp size={18} />
-							Incomes
-						</button>
-						<button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 whitespace-nowrap">
-							<Wallet size={18} />
-							Goals
-						</button>
-						<button className="text-gray-600 hover:text-gray-900 whitespace-nowrap">
-							Insights & Recommendations
-						</button>
-						<button className="text-gray-600 hover:text-gray-900 whitespace-nowrap">
-							Consultants
-						</button>
-					</div>
-				</div>
+          {/* Current Balance */}
+          <div className="relative bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-lg p-6 border-2 border-blue-200 hover:shadow-xl transition-shadow group overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-200 rounded-full blur-3xl opacity-30 group-hover:opacity-50 transition"></div>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Wallet size={24} className="text-white" />
+                </div>
+                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                  Current
+                </span>
+              </div>
+              <p className="text-sm font-medium text-blue-700 mb-1">
+                Available Balance
+              </p>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                LKR 0.00
+              </h2>
+              <p className="text-xs text-gray-600">Ready to start tracking!</p>
+            </div>
+          </div>
+        </div>
 
-				{/* Charts Section */}
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-					{/* Spending by Category */}
-					<div className="bg-white rounded-xl shadow-sm p-6">
-						<div className="flex items-center gap-3 mb-6">
-							<div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-								<PieChart size={20} className="text-purple-600" />
-							</div>
-							<div>
-								<h3 className="font-semibold text-gray-900">Spending by Category</h3>
-								<p className="text-sm text-gray-500">Distribution of your expenses</p>
-							</div>
-						</div>
-						<div className="flex items-center justify-center h-64">
-							<div className="text-center">
-								<div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-									<PieChart size={32} className="text-gray-400" />
-								</div>
-								<p className="text-gray-500 font-medium">No expenses yet</p>
-								<p className="text-sm text-gray-400 mt-1">Start adding expenses to see your spending breakdown</p>
-							</div>
-						</div>
-					</div>
+        {/* Navigation Tabs */}
+        <div className="bg-white rounded-2xl shadow-lg mb-8 border border-gray-100">
+          <div className="flex items-center gap-4 px-6 py-5 overflow-x-auto">
+            <button 
+              onClick={() => setActiveTab("overview")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                activeTab === "overview" 
+                  ? "bg-gradient-to-r from-teal-500 to-green-500 text-white shadow-md" 
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              <PieChart size={18} />
+              Overview
+            </button>
+            <button 
+              onClick={() => setActiveTab("expenses")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                activeTab === "expenses" 
+                  ? "bg-gradient-to-r from-teal-500 to-green-500 text-white shadow-md" 
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              <TrendingDown size={18} />
+              Expenses
+            </button>
+            <button 
+              onClick={() => setActiveTab("incomes")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                activeTab === "incomes" 
+                  ? "bg-gradient-to-r from-teal-500 to-green-500 text-white shadow-md" 
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              <TrendingUp size={18} />
+              Incomes
+            </button>
+            <button 
+              onClick={() => setActiveTab("goals")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                activeTab === "goals" 
+                  ? "bg-gradient-to-r from-teal-500 to-green-500 text-white shadow-md" 
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              <Wallet size={18} />
+              Goals
+            </button>
+            <button 
+              onClick={() => setActiveTab("insights")}
+              className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                activeTab === "insights" 
+                  ? "bg-gradient-to-r from-teal-500 to-green-500 text-white shadow-md" 
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              Insights
+            </button>
+            <button 
+              onClick={() => setActiveTab("consultants")}
+              className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                activeTab === "consultants" 
+                  ? "bg-gradient-to-r from-teal-500 to-green-500 text-white shadow-md" 
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              Consultants
+            </button>
+          </div>
+        </div>
 
-					{/* Income vs Expenses */}
-					<div className="bg-white rounded-xl shadow-sm p-6">
-						<div className="flex items-center gap-3 mb-6">
-							<div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-								<BarChart3 size={20} className="text-blue-600" />
-							</div>
-							<div>
-								<h3 className="font-semibold text-gray-900">Income vs Expenses</h3>
-								<p className="text-sm text-gray-500">Monthly comparison</p>
-							</div>
-						</div>
-						<div className="flex items-center justify-center h-64">
-							<div className="text-center">
-								<div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-									<BarChart3 size={32} className="text-gray-400" />
-								</div>
-								<p className="text-gray-500 font-medium">No data available</p>
-								<p className="text-sm text-gray-400 mt-1">Add income and expenses to see your financial overview</p>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				{/* Recent Transactions */}
-				<div className="bg-white rounded-xl shadow-sm p-6">
-					<h3 className="font-semibold text-gray-900 mb-6">Recent Transactions</h3>
-					<div className="flex flex-col items-center justify-center py-12">
-						<div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-							<Wallet size={32} className="text-gray-400" />
-						</div>
-						<p className="text-gray-500 font-medium">No transactions yet</p>
-						<p className="text-sm text-gray-400 mt-2 text-center max-w-md">
-							Start tracking your finances by adding your first income or expense
-						</p>
-						<div className="flex gap-3 mt-6">
-							<button className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition">
-								Add Income
-							</button>
-							<button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
-								Add Expense
-							</button>
-						</div>
-					</div>
-				</div>
-			</main>
-		</div>
-	);
+        {/* Tab Content */}
+        {activeTab === "overview" && <OverviewView />}
+        {activeTab === "expenses" && <ExpensesView />}
+        {activeTab === "incomes" && <IncomesView />}
+        {activeTab === "goals" && <GoalsView />}
+        {activeTab === "insights" && <InsightsView />}
+        {activeTab === "consultants" && <ConsultantsView />}
+      </main>
+    </div>
+  );
 }
