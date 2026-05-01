@@ -2,10 +2,11 @@
 
 import React, { useState } from "react";
 import { TrendingUp, Plus, Edit2, Trash2 } from "lucide-react";
+import AddIncomeModal from "./AddIncomeModal";
 
 interface Income {
 	id: string;
-	title: string;
+	description: string;
 	category: string;
 	date: string;
 	amount: number;
@@ -14,6 +15,21 @@ interface Income {
 export default function IncomesView() {
 	// Sample income data (would come from backend)
 	const [incomes, setIncomes] = useState<Income[]>([]);
+	const [isModalOpen, setIsModalOpen] = useState(false);
+
+	const handleAddIncome = (newIncome: {
+		description: string;
+		category: string;
+		date: string;
+		amount: number;
+	}) => {
+		const income: Income = {
+			id: Date.now().toString(),
+			...newIncome,
+		};
+		setIncomes([...incomes, income]);
+		setIsModalOpen(false);
+	};
 
 	return (
 		<div>
@@ -23,11 +39,19 @@ export default function IncomesView() {
 					<h1 className="text-3xl font-bold text-gray-900">Incomes</h1>
 					<p className="text-gray-600 mt-1">Track and manage your incomes</p>
 				</div>
-				<button className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl font-semibold shadow-lg hover:bg-green-700 hover:shadow-xl transition">
+				<button 
+					onClick={() => setIsModalOpen(true)}
+					className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl font-semibold shadow-lg hover:bg-green-700 hover:shadow-xl transition">
 					<Plus size={20} />
 					Add Income
 				</button>
 			</div>
+
+			<AddIncomeModal
+				isOpen={isModalOpen}
+				onClose={() => setIsModalOpen(false)}
+				onAddIncome={handleAddIncome}
+			/>
 
 			{/* Incomes List */}
 			<div className="bg-white rounded-2xl shadow-lg border border-gray-100">
@@ -43,7 +67,7 @@ export default function IncomesView() {
 										<TrendingUp size={24} className="text-green-600" />
 									</div>
 									<div>
-										<h3 className="font-semibold text-gray-900">{income.title}</h3>
+										<h3 className="font-semibold text-gray-900">{income.description}</h3>
 										<div className="flex items-center gap-3 mt-1">
 											<span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
 												{income.category}

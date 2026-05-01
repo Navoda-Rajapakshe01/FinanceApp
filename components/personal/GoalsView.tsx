@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Target, Plus, Edit2, Trash2 } from "lucide-react";
+import AddGoalModal from "./AddGoalModal";
 
 interface Goal {
 	id: string;
@@ -15,6 +16,22 @@ interface Goal {
 export default function GoalsView() {
 	// Sample goals data (would come from backend)
 	const [goals, setGoals] = useState<Goal[]>([]);
+	const [isModalOpen, setIsModalOpen] = useState(false);
+
+	const handleAddGoal = (newGoal: {
+		title: string;
+		category: string;
+		targetAmount: number;
+		currentAmount: number;
+		deadline: string;
+	}) => {
+		const goal: Goal = {
+			id: Date.now().toString(),
+			...newGoal,
+		};
+		setGoals([...goals, goal]);
+		setIsModalOpen(false);
+	};
 
 	return (
 		<div>
@@ -24,11 +41,19 @@ export default function GoalsView() {
 					<h1 className="text-3xl font-bold text-gray-900">Financial Goals</h1>
 					<p className="text-gray-600 mt-1">Set ambitious targets and track your progress</p>
 				</div>
-				<button className="flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-xl font-semibold shadow-lg hover:bg-teal-700 hover:shadow-xl transition">
+				<button 
+					onClick={() => setIsModalOpen(true)}
+					className="flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-xl font-semibold shadow-lg hover:bg-teal-700 hover:shadow-xl transition">
 					<Plus size={20} />
 					Create Goal
 				</button>
 			</div>
+
+			<AddGoalModal
+				isOpen={isModalOpen}
+				onClose={() => setIsModalOpen(false)}
+				onAddGoal={handleAddGoal}
+			/>
 
 			{/* Goals List */}
 			<div className="bg-white rounded-2xl shadow-lg border border-gray-100">

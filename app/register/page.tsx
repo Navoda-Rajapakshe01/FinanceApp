@@ -2,12 +2,14 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { User, Building2 } from "lucide-react";
 
 type AccountType = "personal" | "consultant" | null;
 
 export default function RegisterPage() {
   const [accountType, setAccountType] = useState<AccountType>(null);
+  const router = useRouter();
 
   const handleBackClick = () => {
     setAccountType(null);
@@ -131,6 +133,7 @@ interface RegistrationProps {
 }
 
 function PersonalUserRegistration({ onBack }: RegistrationProps) {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -140,13 +143,16 @@ function PersonalUserRegistration({ onBack }: RegistrationProps) {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setApiError("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
 
@@ -157,10 +163,52 @@ function PersonalUserRegistration({ onBack }: RegistrationProps) {
     if (formData.password !== formData.confirmPassword)
       newErrors.confirmPassword = "Passwords do not match";
 
-    if (Object.keys(newErrors).length === 0) {
-      setErrors({});
-    } else {
+    if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
+    setIsLoading(true);
+    setApiError("");
+
+    try {
+      const response = await fetch("/api/register/personal", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fullName: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.details && Array.isArray(data.details)) {
+          setApiError(data.details.join(", "));
+        } else {
+          setApiError(data.error || "Registration failed");
+        }
+        return;
+      }
+
+      // Store token in localStorage
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // Redirect to dashboard
+      router.push("/dashboard");
+    } catch (error) {
+      setApiError("An unexpected error occurred. Please try again.");
+      console.error("Registration error:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -188,6 +236,11 @@ function PersonalUserRegistration({ onBack }: RegistrationProps) {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {apiError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-700 text-sm">{apiError}</p>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Full Name <span className="text-red-500">*</span>
@@ -292,9 +345,14 @@ function PersonalUserRegistration({ onBack }: RegistrationProps) {
 
           <button
             type="submit"
-            className="w-full bg-teal-600 text-white py-2 rounded-lg font-semibold hover:bg-teal-700 transition text-sm mt-6"
+            disabled={isLoading}
+            className={`w-full py-2 rounded-lg font-semibold transition text-sm mt-6 ${
+              isLoading
+                ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+                : "bg-teal-600 text-white hover:bg-teal-700"
+            }`}
           >
-            Create Account
+            {isLoading ? "Creating Account..." : "Create Account"}
           </button>
         </form>
 
@@ -313,6 +371,7 @@ function PersonalUserRegistration({ onBack }: RegistrationProps) {
 }
 
 function ConsultantRegistration({ onBack }: RegistrationProps) {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -325,6 +384,8 @@ function ConsultantRegistration({ onBack }: RegistrationProps) {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState("");
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -333,9 +394,10 @@ function ConsultantRegistration({ onBack }: RegistrationProps) {
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setApiError("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
 
@@ -350,10 +412,55 @@ function ConsultantRegistration({ onBack }: RegistrationProps) {
     if (formData.password !== formData.confirmPassword)
       newErrors.confirmPassword = "Passwords do not match";
 
-    if (Object.keys(newErrors).length === 0) {
-      setErrors({});
-    } else {
+    if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
+    setIsLoading(true);
+    setApiError("");
+
+    try {
+      const response = await fetch("/api/register/consultant", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fullName: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          specialization: formData.specialization,
+          yearsOfExperience: formData.yearsOfExperience,
+          certifications: formData.certifications,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.details && Array.isArray(data.details)) {
+          setApiError(data.details.join(", "));
+        } else {
+          setApiError(data.error || "Registration failed");
+        }
+        return;
+      }
+
+      // Store token in localStorage
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // Redirect to consultant dashboard
+      router.push("/consultant");
+    } catch (error) {
+      setApiError("An unexpected error occurred. Please try again.");
+      console.error("Consultant registration error:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -381,6 +488,11 @@ function ConsultantRegistration({ onBack }: RegistrationProps) {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {apiError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-700 text-sm">{apiError}</p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -543,9 +655,14 @@ function ConsultantRegistration({ onBack }: RegistrationProps) {
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-2 rounded-lg font-semibold hover:from-orange-600 hover:to-red-600 transition text-sm mt-6"
+            disabled={isLoading}
+            className={`w-full py-2 rounded-lg font-semibold transition text-sm mt-6 ${
+              isLoading
+                ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+                : "bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600"
+            }`}
           >
-            Register as Consultant
+            {isLoading ? "Registering..." : "Register as Consultant"}
           </button>
         </form>
 

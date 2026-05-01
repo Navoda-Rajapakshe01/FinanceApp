@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -11,16 +11,30 @@ import {
   PieChart,
   Wallet,
 } from "lucide-react";
-import OverviewView from "@/components/OverviewView";
-import ExpensesView from "@/components/ExpensesView";
-import IncomesView from "@/components/IncomesView";
-import GoalsView from "@/components/GoalsView";
-import InsightsView from "@/components/InsightsView";
-import ConsultantsView from "@/components/ConsultantsView";
+import OverviewView from "@/components/personal/OverviewView";
+import ExpensesView from "@/components/personal/ExpensesView";
+import IncomesView from "@/components/personal/IncomesView";
+import GoalsView from "@/components/personal/GoalsView";
+import InsightsView from "@/components/personal/InsightsView";
+import ConsultantsView from "@/components/personal/ConsultantsView";
 
 export default function DashboardPage() {
-  const userName = "User"; // This would come from backend/auth
+  const [userName, setUserName] = useState("there");
   const [activeTab, setActiveTab] = useState("overview");
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (!storedUser) return;
+
+    try {
+      const parsedUser = JSON.parse(storedUser) as { fullName?: string };
+      if (parsedUser.fullName) {
+        setUserName(parsedUser.fullName);
+      }
+    } catch (error) {
+      console.error("Failed to parse stored user:", error);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -61,7 +75,7 @@ export default function DashboardPage() {
         {/* Welcome Message */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-green-600 bg-clip-text text-transparent">
-            Welcome back, {userName}!
+            Hi, {userName}!
           </h1>
           <p className="text-gray-600 mt-2 text-lg">
             Here's your financial overview for January 2026{" "}
@@ -208,7 +222,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Tab Content */}
-        {activeTab === "overview" && <OverviewView />}
+        {activeTab === "overview" && <OverviewView onTabChange={setActiveTab} />}
         {activeTab === "expenses" && <ExpensesView />}
         {activeTab === "incomes" && <IncomesView />}
         {activeTab === "goals" && <GoalsView />}

@@ -2,33 +2,76 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LogIn } from "lucide-react";
 
 export default function LoginPage() {
+	const router = useRouter();
 	const [formData, setFormData] = useState({
 		email: "",
 		password: "",
 	});
 
 	const [errors, setErrors] = useState<Record<string, string>>({});
+	const [apiError, setApiError] = useState("");
+	const [isLoading, setIsLoading] = useState(false);
 	const [showPassword, setShowPassword] = useState(false);
 
 	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const { name, value } = e.target;
 		setFormData((prev) => ({ ...prev, [name]: value }));
+		setApiError("");
 	};
 
-	const handleSubmit = (e: React.FormEvent) => {
+	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		const newErrors: Record<string, string> = {};
 
 		if (!formData.email) newErrors.email = "Email is required";
 		if (!formData.password) newErrors.password = "Password is required";
 
-		if (Object.keys(newErrors).length === 0) {
-			setErrors({});
-		} else {
+		if (Object.keys(newErrors).length > 0) {
 			setErrors(newErrors);
+			return;
+		}
+
+		setErrors({});
+		setIsLoading(true);
+		setApiError("");
+
+		try {
+			const response = await fetch("/api/login", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					email: formData.email,
+					password: formData.password,
+				}),
+			});
+
+			const data = await response.json();
+
+			if (!response.ok) {
+				setApiError(data.error || "Login failed");
+				return;
+			}
+
+			localStorage.setItem("token", data.token);
+			localStorage.setItem("user", JSON.stringify(data.user));
+
+			if (data.user?.accountType === "consultant") {
+				router.push("/consultant");
+				return;
+			}
+
+			router.push("/dashboard");
+		} catch (error) {
+			setApiError("An unexpected error occurred. Please try again.");
+			console.error("Login error:", error);
+		} finally {
+			setIsLoading(false);
 		}
 	};
 
@@ -56,6 +99,11 @@ export default function LoginPage() {
 				</p>
 
 				<form onSubmit={handleSubmit} className="space-y-4">
+					{apiError && (
+						<div className="bg-red-50 border border-red-200 rounded-lg p-4">
+							<p className="text-red-700 text-sm">{apiError}</p>
+						</div>
+					)}
 					<div>
 						<label className="block text-sm font-medium text-gray-700 mb-1">
 							Email
@@ -98,9 +146,14 @@ export default function LoginPage() {
 
 					<button
 						type="submit"
-						className="w-full bg-teal-600 text-white py-2 rounded-lg font-semibold hover:bg-teal-700 transition text-sm mt-6"
+						disabled={isLoading}
+						className={`w-full py-2 rounded-lg font-semibold transition text-sm mt-6 ${
+							isLoading
+								? "bg-gray-400 text-gray-700 cursor-not-allowed"
+								: "bg-teal-600 text-white hover:bg-teal-700"
+						}`}
 					>
-						Login
+						{isLoading ? "Logging in..." : "Login"}
 					</button>
 				</form>
 
