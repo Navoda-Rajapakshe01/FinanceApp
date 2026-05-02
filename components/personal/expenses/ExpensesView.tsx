@@ -65,7 +65,9 @@ export default function ExpensesView() {
 				return;
 			}
 
-			const response = await fetch("/api/expenses", {
+			// Request expenses for the currently selected month only
+			const url = `/api/expenses?month=${selectedMonth}`;
+			const response = await fetch(url, {
 				method: "GET",
 				headers: {
 					Authorization: `Bearer ${token}`,
@@ -90,8 +92,12 @@ export default function ExpensesView() {
 
 	useEffect(() => {
 		fetchMonths();
-		fetchExpenses();
 	}, []);
+
+	// Refetch expenses whenever the selected month changes
+	useEffect(() => {
+		fetchExpenses();
+	}, [selectedMonth]);
 
 	const handleMonthClick = (monthValue: string) => {
 		setSelectedMonth(`${selectedYear}-${monthValue}`);
@@ -111,7 +117,8 @@ export default function ExpensesView() {
 	const getMonthDateRange = () => {
 		const [year, month] = selectedMonth.split("-").map(Number);
 		const startDate = new Date(year, month - 1, 1);
-		const endDate = new Date(year, month, 0);
+		startDate.setHours(0, 0, 0, 0);
+		const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 		return { startDate, endDate };
 	};
 
@@ -157,7 +164,8 @@ export default function ExpensesView() {
 					return;
 				}
 
-				setExpenses((prev) => [data.expense, ...prev]);
+				// Refresh the list for the selected month
+				await fetchExpenses();
 				setIsModalOpen(false);
 				setToast({
 					isOpen: true,
@@ -214,17 +222,8 @@ export default function ExpensesView() {
 					});
 					return;
 				}
-
-				setExpenses((prev) =>
-					prev.map((e) =>
-						e.id === expenseId
-							? {
-									...e,
-									...updatedExpense,
-							  }
-							: e
-					)
-				);
+				// Refresh the list for the selected month
+				await fetchExpenses();
 				setIsModalOpen(false);
 				setEditingExpense(null);
 				setToast({
@@ -275,8 +274,8 @@ export default function ExpensesView() {
 				return;
 			}
 
-			// Remove from local state
-			setExpenses((prev) => prev.filter((e) => e.id !== expenseId));
+			// Refresh the list for the selected month
+			await fetchExpenses();
 			setConfirmDialog({ isOpen: false, expenseId: "" });
 			setToast({
 				isOpen: true,
@@ -387,21 +386,21 @@ export default function ExpensesView() {
 					<div className="flex flex-col items-center justify-center py-16">
 						<p className="text-gray-500 font-medium">Loading expenses...</p>
 					</div>
-			) : monthExpenses.length > 0 ? (
+			) : allExpenses.length > 0 ? (
 				<div>
 					<div className="p-6 bg-red-50 border-b border-red-200">
 						<div className="flex items-center justify-between">
 							<div>
-								<p className="text-sm font-medium text-red-700">Total Expenses for {selectedMonthName} {selectedYear}</p>
-								<p className="text-3xl font-bold text-red-600 mt-2">LKR {totalMonthExpenses.toFixed(2)}</p>
+								<p className="text-sm font-medium text-red-700">Total Expenses</p>
+								<p className="text-3xl font-bold text-red-600 mt-2">LKR {totalExpenses.toFixed(2)}</p>
 							</div>
 							<div className="text-right">
-								<p className="text-sm text-red-600 font-semibold">{monthExpenses.length} transactions</p>
+								<p className="text-sm text-red-600 font-semibold">{allExpenses.length} transactions</p>
 							</div>
 						</div>
 					</div>
 					<div className="divide-y divide-gray-100">
-						{monthExpenses.map((expense) => (
+						{allExpenses.map((expense) => (
 							<div
 								key={expense.id}
 								className="p-6 flex items-center justify-between hover:bg-gray-50 transition"
@@ -442,12 +441,12 @@ export default function ExpensesView() {
 						))}
 					</div>
 				</div>
-				) : (
+					) : (
 					<div className="flex flex-col items-center justify-center py-16">
 						<div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4">
 							<TrendingDown size={40} className="text-red-600" />
 						</div>
-					<p className="text-gray-500 font-medium">No expenses in {selectedMonthName} {selectedYear}</p>
+					<p className="text-gray-500 font-medium">No expenses yet</p>
 					<p className="text-sm text-gray-400 mt-2">
 						Click "Add Expense" to record your expense or select a different month
 						</p>

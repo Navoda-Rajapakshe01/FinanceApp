@@ -63,7 +63,9 @@ export default function IncomesView() {
 				return;
 			}
 
-			const response = await fetch("/api/incomes", {
+			// Request incomes for the currently selected month only
+			const url = `/api/incomes?month=${selectedMonth}`;
+			const response = await fetch(url, {
 				method: "GET",
 				headers: {
 					Authorization: `Bearer ${token}`,
@@ -88,8 +90,12 @@ export default function IncomesView() {
 
 	useEffect(() => {
 		fetchMonths();
-		fetchIncomes();
 	}, []);
+
+	// Refetch incomes whenever the selected month changes
+	useEffect(() => {
+		fetchIncomes();
+	}, [selectedMonth]);
 
 	const handleMonthClick = (monthValue: string) => {
 		setSelectedMonth(`${selectedYear}-${monthValue}`);
@@ -109,7 +115,8 @@ export default function IncomesView() {
 	const getMonthDateRange = () => {
 		const [year, month] = selectedMonth.split("-").map(Number);
 		const startDate = new Date(year, month - 1, 1);
-		const endDate = new Date(year, month, 0);
+		startDate.setHours(0, 0, 0, 0);
+		const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 		return { startDate, endDate };
 	};
 
@@ -130,6 +137,7 @@ export default function IncomesView() {
 		setIsModalOpen(false);
 	};
 
+	// Update income 
 	const handleUpdateIncome = (incomeId: string, updatedIncome: {
 		description: string;
 		category: string;
@@ -197,6 +205,7 @@ export default function IncomesView() {
 		})();
 	};
 
+	// Delete income
 	const handleDeleteIncome = async () => {
 		const { incomeId } = confirmDialog;
 
