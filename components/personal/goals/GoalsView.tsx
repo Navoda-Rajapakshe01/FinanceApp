@@ -17,6 +17,7 @@ export default function GoalsView() {
 	// Sample goals data (would come from backend)
 	const [goals, setGoals] = useState<Goal[]>([]);
 	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
 
 	const handleAddGoal = (newGoal: {
 		title: string;
@@ -29,8 +30,29 @@ export default function GoalsView() {
 			id: Date.now().toString(),
 			...newGoal,
 		};
-		setGoals([...goals, goal]);
+		setGoals((prev) => [...prev, goal]);
 		setIsModalOpen(false);
+	};
+
+	const handleUpdateGoal = (goalId: string, updatedGoal: {
+		title: string;
+		category: string;
+		targetAmount: number;
+		currentAmount: number;
+		deadline: string;
+	}) => {
+		setGoals((prev) =>
+			prev.map((g) =>
+				g.id === goalId
+					? {
+							...g,
+							...updatedGoal,
+					  }
+					: g
+			)
+		);
+		setIsModalOpen(false);
+		setEditingGoal(null);
 	};
 
 	return (
@@ -42,17 +64,25 @@ export default function GoalsView() {
 					<p className="text-gray-600 mt-1">Set ambitious targets and track your progress</p>
 				</div>
 				<button 
-					onClick={() => setIsModalOpen(true)}
-					className="flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-xl font-semibold shadow-lg hover:bg-teal-700 hover:shadow-xl transition">
+				onClick={() => {
+					setEditingGoal(null);
+					setIsModalOpen(true);
+				}}
+				className="flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-xl font-semibold shadow-lg hover:bg-teal-700 hover:shadow-xl transition">
 					<Plus size={20} />
 					Create Goal
 				</button>
 			</div>
 
-			<AddGoalModal
-				isOpen={isModalOpen}
-				onClose={() => setIsModalOpen(false)}
-				onAddGoal={handleAddGoal}
+		<AddGoalModal
+			isOpen={isModalOpen}
+			onClose={() => {
+				setIsModalOpen(false);
+				setEditingGoal(null);
+			}}
+			onAddGoal={handleAddGoal}
+			onUpdateGoal={handleUpdateGoal}
+			editingGoal={editingGoal}
 			/>
 
 			{/* Goals List */}
@@ -91,7 +121,12 @@ export default function GoalsView() {
 												</p>
 											</div>
 											<div className="flex items-center gap-2">
-												<button className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
+											<button 
+												onClick={() => {
+													setEditingGoal(goal);
+													setIsModalOpen(true);
+												}}
+												className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
 													<Edit2 size={18} />
 												</button>
 												<button className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
@@ -121,7 +156,13 @@ export default function GoalsView() {
 						<p className="text-gray-600 text-center max-w-2xl leading-relaxed">
 							Start your financial journey by setting clear, achievable goals. Whether it's saving for a vacation, building an emergency fund, or planning for a major purchase.
 						</p>
-						<button className="flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-xl font-semibold shadow-lg hover:bg-teal-700 hover:shadow-xl transition mt-8">
+						<button
+							onClick={() => {
+								setEditingGoal(null);
+								setIsModalOpen(true);
+							}}
+							className="flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-xl font-semibold shadow-lg hover:bg-teal-700 hover:shadow-xl transition mt-8"
+						>
 							<Plus size={20} />
 							Create Your First Goal
 						</button>

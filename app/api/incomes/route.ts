@@ -1,6 +1,6 @@
 import { connectDB } from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
-import { Expense } from "@/models";
+import { Income } from "@/models";
 import { NextRequest, NextResponse } from "next/server";
 
 function getAuthPayload(request: NextRequest) {
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
-    const expenses = await Expense.find({
+    const incomes = await Income.find({
       userId: payload._id,
       accountType: payload.accountType,
     })
@@ -32,17 +32,16 @@ export async function GET(request: NextRequest) {
       .lean();
 
     return NextResponse.json({
-      expenses: expenses.map((expense) => ({
-        id: expense._id.toString(),
-        title: expense.title,
-        category: expense.category,
-        account: expense.account,
-        date: expense.date,
-        amount: expense.amount,
+      incomes: incomes.map((income) => ({
+        id: income._id.toString(),
+        description: income.description,
+        category: income.category,
+        date: income.date,
+        amount: income.amount,
       })),
     });
   } catch (error) {
-    console.error("Fetch expenses error:", error);
+    console.error("Fetch incomes error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -58,11 +57,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { title, category, account, date, amount } = await request.json();
+    const { description, category, date, amount } = await request.json();
 
-    if (!title || !category || !account || !date || amount === undefined) {
+    if (!description || !category || !date || amount === undefined) {
       return NextResponse.json(
-        { error: "All expense fields are required" },
+        { error: "All income fields are required" },
         { status: 400 }
       );
     }
@@ -78,24 +77,22 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
-    const created = await Expense.create({
+    const created = await Income.create({
       userId: payload._id,
       accountType: payload.accountType,
-      title: String(title).trim(),
+      description: String(description).trim(),
       category: String(category).trim(),
-      account: String(account).trim(),
       date: String(date).trim(),
       amount: parsedAmount,
     });
 
     return NextResponse.json(
       {
-        message: "Expense created",
-        expense: {
+        message: "Income created",
+        income: {
           id: created._id.toString(),
-          title: created.title,
+          description: created.description,
           category: created.category,
-          account: created.account,
           date: created.date,
           amount: created.amount,
         },
@@ -103,7 +100,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Create expense error:", error);
+    console.error("Create income error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -120,38 +117,38 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const expenseId = searchParams.get("id");
+    const incomeId = searchParams.get("id");
 
-    if (!expenseId) {
+    if (!incomeId) {
       return NextResponse.json(
-        { error: "Expense ID is required" },
+        { error: "Income ID is required" },
         { status: 400 }
       );
     }
 
     await connectDB();
 
-    const expense = await Expense.findOne({
-      _id: expenseId,
+    const income = await Income.findOne({
+      _id: incomeId,
       userId: payload._id,
       accountType: payload.accountType,
     });
 
-    if (!expense) {
+    if (!income) {
       return NextResponse.json(
-        { error: "Expense not found" },
+        { error: "Income not found" },
         { status: 404 }
       );
     }
 
-    await Expense.deleteOne({ _id: expenseId });
+    await Income.deleteOne({ _id: incomeId });
 
     return NextResponse.json(
-      { message: "Expense deleted successfully" },
+      { message: "Income deleted successfully" },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Delete expense error:", error);
+    console.error("Delete income error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -168,20 +165,20 @@ export async function PUT(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const expenseId = searchParams.get("id");
+    const incomeId = searchParams.get("id");
 
-    if (!expenseId) {
+    if (!incomeId) {
       return NextResponse.json(
-        { error: "Expense ID is required" },
+        { error: "Income ID is required" },
         { status: 400 }
       );
     }
 
-    const { title, category, account, date, amount } = await request.json();
+    const { description, category, date, amount } = await request.json();
 
-    if (!title || !category || !account || !date || amount === undefined) {
+    if (!description || !category || !date || amount === undefined) {
       return NextResponse.json(
-        { error: "All expense fields are required" },
+        { error: "All income fields are required" },
         { status: 400 }
       );
     }
@@ -197,25 +194,24 @@ export async function PUT(request: NextRequest) {
 
     await connectDB();
 
-    const expense = await Expense.findOne({
-      _id: expenseId,
+    const income = await Income.findOne({
+      _id: incomeId,
       userId: payload._id,
       accountType: payload.accountType,
     });
 
-    if (!expense) {
+    if (!income) {
       return NextResponse.json(
-        { error: "Expense not found" },
+        { error: "Income not found" },
         { status: 404 }
       );
     }
 
-    const updated = await Expense.findByIdAndUpdate(
-      expenseId,
+    const updated = await Income.findByIdAndUpdate(
+      incomeId,
       {
-        title: String(title).trim(),
+        description: String(description).trim(),
         category: String(category).trim(),
-        account: String(account).trim(),
         date: String(date).trim(),
         amount: parsedAmount,
       },
@@ -224,12 +220,11 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(
       {
-        message: "Expense updated",
-        expense: {
+        message: "Income updated",
+        income: {
           id: updated._id.toString(),
-          title: updated.title,
+          description: updated.description,
           category: updated.category,
-          account: updated.account,
           date: updated.date,
           amount: updated.amount,
         },
@@ -237,7 +232,7 @@ export async function PUT(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Update expense error:", error);
+    console.error("Update income error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

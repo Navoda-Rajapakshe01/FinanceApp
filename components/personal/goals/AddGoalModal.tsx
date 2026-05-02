@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
 
 interface AddGoalModalProps {
@@ -13,6 +13,21 @@ interface AddGoalModalProps {
     currentAmount: number;
     deadline: string;
   }) => void;
+  onUpdateGoal?: (goalId: string, goal: {
+    title: string;
+    category: string;
+    targetAmount: number;
+    currentAmount: number;
+    deadline: string;
+  }) => void;
+  editingGoal?: {
+    id: string;
+    title: string;
+    category: string;
+    targetAmount: number;
+    currentAmount: number;
+    deadline: string;
+  } | null;
 }
 
 const categories = [
@@ -32,6 +47,8 @@ export default function AddGoalModal({
   isOpen,
   onClose,
   onAddGoal,
+  onUpdateGoal,
+  editingGoal,
 }: AddGoalModalProps) {
   const [formData, setFormData] = useState({
     title: "",
@@ -40,6 +57,28 @@ export default function AddGoalModal({
     currentAmount: "",
     deadline: new Date().toISOString().split("T")[0],
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      if (editingGoal) {
+        setFormData({
+          title: editingGoal.title,
+          category: editingGoal.category,
+          targetAmount: String(editingGoal.targetAmount),
+          currentAmount: String(editingGoal.currentAmount),
+          deadline: editingGoal.deadline,
+        });
+      } else {
+        setFormData({
+          title: "",
+          category: "Vacation",
+          targetAmount: "",
+          currentAmount: "",
+          deadline: new Date().toISOString().split("T")[0],
+        });
+      }
+    }
+  }, [isOpen, editingGoal]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -57,13 +96,21 @@ export default function AddGoalModal({
       alert("Please fill in all required fields");
       return;
     }
-    onAddGoal({
+    
+    const goalData = {
       title: formData.title,
       category: formData.category,
       targetAmount: parseFloat(formData.targetAmount),
       currentAmount: parseFloat(formData.currentAmount) || 0,
       deadline: formData.deadline,
-    });
+    };
+
+    if (editingGoal && onUpdateGoal) {
+      onUpdateGoal(editingGoal.id, goalData);
+    } else {
+      onAddGoal(goalData);
+    }
+
     setFormData({
       title: "",
       category: "Vacation",
@@ -71,6 +118,7 @@ export default function AddGoalModal({
       currentAmount: "",
       deadline: new Date().toISOString().split("T")[0],
     });
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -80,7 +128,7 @@ export default function AddGoalModal({
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
-          <h2 className="text-2xl font-bold text-gray-900">Create Goal</h2>
+          <h2 className="text-2xl font-bold text-gray-900">{editingGoal ? "Edit Goal" : "Create Goal"}</h2>
           <button
             onClick={onClose}
             className="p-1 text-gray-400 hover:text-gray-600 transition"
@@ -186,7 +234,7 @@ export default function AddGoalModal({
               type="submit"
               className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg font-semibold hover:bg-teal-700 transition"
             >
-              Create Goal
+              {editingGoal ? "Update Goal" : "Create Goal"}
             </button>
           </div>
         </form>

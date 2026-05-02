@@ -1,32 +1,44 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { CalendarDays, CreditCard, Tag, Wallet, X } from "lucide-react";
+import { CalendarDays, Tag, TrendingUp, X } from "lucide-react";
 
-interface AddExpenseModalProps {
+interface AddIncomeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddExpense: (expense: {
-    title: string;
+  onAddIncome: (income: {
+    description: string;
     category: string;
-    account: string;
     date: string;
     amount: number;
   }) => void;
+  onUpdateIncome?: (incomeId: string, income: {
+    description: string;
+    category: string;
+    date: string;
+    amount: number;
+  }) => void;
+  editingIncome?: {
+    id: string;
+    description: string;
+    category: string;
+    date: string;
+    amount: number;
+  } | null;
 }
 
-const accounts = ["Cash", "Card", "Bank Account", "Digital Wallet", "Other"];
 const ADD_CATEGORY_OPTION = "__add_new_category__";
 
-export default function AddExpenseModal({
+export default function AddIncomeModal({
   isOpen,
   onClose,
-  onAddExpense,
-}: AddExpenseModalProps) {
+  onAddIncome,
+  onUpdateIncome,
+  editingIncome,
+}: AddIncomeModalProps) {
   const [formData, setFormData] = useState({
-    title: "",
+    description: "",
     category: "",
-    account: "Cash",
     date: new Date().toISOString().split("T")[0],
     amount: "",
   });
@@ -35,6 +47,12 @@ export default function AddExpenseModal({
   const [categoryError, setCategoryError] = useState("");
   const [newCategory, setNewCategory] = useState("");
   const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [errors, setErrors] = useState<{
+    description?: string;
+    amount?: string;
+    submit?: string;
+  }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchCategories = async () => {
     setIsLoadingCategories(true);
@@ -47,7 +65,7 @@ export default function AddExpenseModal({
         return;
       }
 
-      const response = await fetch("/api/expense-categories", {
+      const response = await fetch("/api/income-categories", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -74,7 +92,7 @@ export default function AddExpenseModal({
             : fetchedCategories[0] || "",
       }));
     } catch (error) {
-      console.error("Failed to fetch categories:", error);
+      console.error("Failed to fetch income categories:", error);
       setCategoryError("Failed to load categories");
     } finally {
       setIsLoadingCategories(false);
@@ -83,9 +101,35 @@ export default function AddExpenseModal({
 
   useEffect(() => {
     if (isOpen) {
+      if (editingIncome) {
+        setFormData({
+          description: editingIncome.description,
+          category: editingIncome.category,
+          date: editingIncome.date,
+          amount: String(editingIncome.amount),
+        });
+      } else {
+        setFormData({
+          description: "",
+          category: "",
+          date: new Date().toISOString().split("T")[0],
+          amount: "",
+        });
+      }
       fetchCategories();
     }
-  }, [isOpen]);
+  }, [isOpen, editingIncome]);
+
+  useEffect(() => {
+    // This effect ensures that after categories are loaded, if we're editing,
+    // we preserve the category from editingIncome
+    if (editingIncome && categories.length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        category: editingIncome.category,
+      }));
+    }
+  }, [categories, editingIncome]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -95,6 +139,12 @@ export default function AddExpenseModal({
       ...prev,
       [name]: value,
     }));
+    if (name in errors) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
   };
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,6 +158,8 @@ export default function AddExpenseModal({
       ...prev,
       amount: value,
     }));
+
+    setErrors((prev) => ({ ...prev, amount: "" }));
   };
 
   const handleAmountBlur = () => {
@@ -129,39 +181,87 @@ export default function AddExpenseModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      !formData.title ||
-      !formData.amount ||
-      !formData.account ||
-      !formData.category ||
-      formData.category === ADD_CATEGORY_OPTION
-    ) {
-      alert("Please fill in all fields");
-      return;
+
+    const nextErrors: { description?: string; amount?: string } = {};
+
+    if (!formData.description.trim()) {
+      nextErrors.description = "Description is required";
     }
 
     const parsedAmount = Number(formData.amount);
+    if (!formData.amount.trim()) {
+      nextErrors.amount = "Amount is required";
+    } else if (Number.isNaN(parsedAmount) || parsedAmount < 0) {
+      nextErrors.amount = "Please enter a valid amount";
+    }
 
-    if (Number.isNaN(parsedAmount) || parsedAmount < 0) {
-      alert("Please enter a valid amount");
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
 
-    onAddExpense({
-      title: formData.title,
+    submitIncome({
+      description: formData.description.trim(),
       category: formData.category,
-      account: formData.account,
       date: formData.date,
       amount: parsedAmount,
     });
-    setFormData({
-      title: "",
-      category: categories[0] || "",
-      account: "Cash",
-      date: new Date().toISOString().split("T")[0],
-      amount: "",
-    });
-    onClose();
+  };
+
+  const submitIncome = async (incomeData: {
+    description: string;
+    category: string;
+    date: string;
+    amount: number;
+  }) => {
+    setIsSubmitting(true);
+    setErrors((prev) => ({ ...prev, submit: "" }));
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setErrors((prev) => ({ ...prev, submit: "Please log in again to update income" }));
+        return;
+      }
+
+      const method = editingIncome ? "PUT" : "POST";
+      const url = editingIncome ? `/api/incomes?id=${editingIncome.id}` : "/api/incomes";
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(incomeData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setErrors((prev) => ({ ...prev, submit: data.error || "Failed to save income" }));
+        return;
+      }
+
+      if (editingIncome && onUpdateIncome) {
+        onUpdateIncome(editingIncome.id, incomeData);
+      } else {
+        onAddIncome(incomeData);
+      }
+      setFormData({
+        description: "",
+        category: categories[0] || "",
+        date: new Date().toISOString().split("T")[0],
+        amount: "",
+      });
+      setErrors({});
+      onClose();
+    } catch (error) {
+      console.error("Failed to save income:", error);
+      setErrors((prev) => ({ ...prev, submit: "Failed to save income" }));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleAddCategory = async () => {
@@ -182,7 +282,7 @@ export default function AddExpenseModal({
         return;
       }
 
-      const response = await fetch("/api/expense-categories", {
+      const response = await fetch("/api/income-categories", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -211,7 +311,7 @@ export default function AddExpenseModal({
       setFormData((prev) => ({ ...prev, category: createdName }));
       setNewCategory("");
     } catch (error) {
-      console.error("Failed to add category:", error);
+      console.error("Failed to add income category:", error);
       setCategoryError("Failed to add category");
     } finally {
       setIsAddingCategory(false);
@@ -224,17 +324,21 @@ export default function AddExpenseModal({
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-gray-100">
         {/* Header */}
-        <div className="px-6 py-5 bg-gradient-to-r from-red-50 to-orange-50 border-b border-gray-100">
+        <div className="px-6 py-5 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-100">
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Add Expense</h2>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {editingIncome ? "Edit" : "Add"} Income
+              </h2>
               <p className="text-sm text-gray-600 mt-1">
-                Record your spending and keep your budget accurate.
+                {editingIncome
+                  ? "Update your income details."
+                  : "Record your income and keep your financial summary updated."}
               </p>
             </div>
             <div className="flex items-start gap-2">
-              <div className="w-11 h-11 rounded-xl bg-red-100 flex items-center justify-center">
-                <Wallet size={20} className="text-red-600" />
+              <div className="w-11 h-11 rounded-xl bg-green-100 flex items-center justify-center">
+                <TrendingUp size={20} className="text-green-600" />
               </div>
               <button
                 onClick={onClose}
@@ -249,19 +353,22 @@ export default function AddExpenseModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Title */}
+          {/* Description */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Title
+              Description
             </label>
             <input
               type="text"
-              name="title"
-              value={formData.title}
+              name="description"
+              value={formData.description}
               onChange={handleChange}
-              placeholder="Enter expense title"
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-400 text-gray-900"
+              placeholder="Enter income description"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-400 text-gray-900"
             />
+            {errors.description && (
+              <p className="text-xs text-red-600 mt-2">{errors.description}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -276,7 +383,7 @@ export default function AddExpenseModal({
                 value={formData.category}
                 onChange={handleChange}
                 disabled={isLoadingCategories}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-400 text-gray-900 bg-white"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-400 text-gray-900 bg-white"
               >
                 {categories.length === 0 ? (
                   <option value="" className="text-gray-900 bg-white">
@@ -298,24 +405,19 @@ export default function AddExpenseModal({
               )}
             </div>
 
-            {/* Account */}
+            {/* Date */}
             <div>
               <label className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                <CreditCard size={14} className="text-gray-500" />
-                Account
+                <CalendarDays size={14} className="text-gray-500" />
+                Date
               </label>
-              <select
-                name="account"
-                value={formData.account}
+              <input
+                type="date"
+                name="date"
+                value={formData.date}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-400 text-gray-900 bg-white"
-              >
-                {accounts.map((account) => (
-                  <option key={account} value={account} className="text-gray-900 bg-white">
-                    {account}
-                  </option>
-                ))}
-              </select>
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-400 text-gray-900"
+              />
             </div>
           </div>
 
@@ -328,7 +430,7 @@ export default function AddExpenseModal({
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
                   placeholder="Type category name"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-900 bg-white"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 bg-white"
                 />
                 <button
                   type="button"
@@ -342,59 +444,53 @@ export default function AddExpenseModal({
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Date */}
-            <div>
-              <label className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                <CalendarDays size={14} className="text-gray-500" />
-                Date
-              </label>
+          {/* Amount */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Amount (LKR)
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">
+                LKR
+              </span>
               <input
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-400 text-gray-900"
+                type="text"
+                name="amount"
+                value={formData.amount}
+                onChange={handleAmountChange}
+                onBlur={handleAmountBlur}
+                placeholder="30000.00"
+                inputMode="decimal"
+                className="w-full pl-14 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-400 text-gray-900"
               />
             </div>
-
-            {/* Amount */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Amount (LKR)
-              </label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">
-                  LKR
-                </span>
-                <input
-                  type="text"
-                  name="amount"
-                  value={formData.amount}
-                  onChange={handleAmountChange}
-                  onBlur={handleAmountBlur}
-                  placeholder="30000.00"
-                  inputMode="decimal"
-                  className="w-full pl-14 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-400 text-gray-900"
-                />
-              </div>
-            </div>
+            {errors.amount && (
+              <p className="text-xs text-red-600 mt-2">{errors.amount}</p>
+            )}
           </div>
+
+          {errors.submit && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-xs text-red-600">{errors.submit}</p>
+            </div>
+          )}
 
           {/* Buttons */}
           <div className="flex gap-3 pt-3">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition"
+              disabled={isSubmitting}
+              className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition"
+              disabled={isSubmitting}
+              className="flex-1 px-4 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition disabled:opacity-50"
             >
-              Add Expense
+              {isSubmitting ? (editingIncome ? "Updating..." : "Adding...") : (editingIncome ? "Update Income" : "Add Income")}
             </button>
           </div>
         </form>
