@@ -65,7 +65,7 @@ export default function AddIncomeModal({
         return;
       }
 
-      const response = await fetch("/api/income-categories", {
+      const response = await fetch("/api/income/income-categories", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -121,8 +121,6 @@ export default function AddIncomeModal({
   }, [isOpen, editingIncome]);
 
   useEffect(() => {
-    // This effect ensures that after categories are loaded, if we're editing,
-    // we preserve the category from editingIncome
     if (editingIncome && categories.length > 0) {
       setFormData((prev) => ({
         ...prev,
@@ -225,7 +223,7 @@ export default function AddIncomeModal({
       }
 
       const method = editingIncome ? "PUT" : "POST";
-      const url = editingIncome ? `/api/incomes?id=${editingIncome.id}` : "/api/incomes";
+      const url = editingIncome ? `/api/income/incomes?id=${editingIncome.id}` : "/api/income/incomes";
 
       const response = await fetch(url, {
         method,
@@ -268,7 +266,7 @@ export default function AddIncomeModal({
     const categoryName = newCategory.trim();
 
     if (!categoryName) {
-      alert("Please enter a category name");
+      setCategoryError("Please enter a category name");
       return;
     }
 
@@ -282,7 +280,7 @@ export default function AddIncomeModal({
         return;
       }
 
-      const response = await fetch("/api/income-categories", {
+      const response = await fetch("/api/income/income-categories", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

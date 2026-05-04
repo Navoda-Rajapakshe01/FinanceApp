@@ -52,6 +52,12 @@ export default function AddExpenseModal({
   const [categoryError, setCategoryError] = useState("");
   const [newCategory, setNewCategory] = useState("");
   const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [errors, setErrors] = useState<{
+    title?: string;
+    amount?: string;
+    submit?: string;
+  }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchCategories = async () => {
     setIsLoadingCategories(true);
@@ -64,7 +70,7 @@ export default function AddExpenseModal({
         return;
       }
 
-      const response = await fetch("/api/expense-categories", {
+      const response = await fetch("/api/expense/expense-categories", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -140,6 +146,9 @@ export default function AddExpenseModal({
       ...prev,
       [name]: value,
     }));
+    if (name in errors) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
   };
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -153,6 +162,7 @@ export default function AddExpenseModal({
       ...prev,
       amount: value,
     }));
+    if (errors.amount) setErrors((prev) => ({ ...prev, amount: undefined }));
   };
 
   const handleAmountBlur = () => {
@@ -172,55 +182,68 @@ export default function AddExpenseModal({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      !formData.title ||
-      !formData.amount ||
-      !formData.account ||
-      !formData.category ||
-      formData.category === ADD_CATEGORY_OPTION
-    ) {
-      alert("Please fill in all fields");
-      return;
+    const nextErrors: { title?: string; amount?: string; submit?: string } = {};
+
+    if (!formData.title) nextErrors.title = "Title is required";
+    if (!formData.amount) nextErrors.amount = "Amount is required";
+    if (!formData.account || !formData.category || formData.category === ADD_CATEGORY_OPTION) {
+      if (!nextErrors.title && !nextErrors.amount) {
+        nextErrors.submit = "Please fill in all fields";
+      }
     }
 
     const parsedAmount = Number(formData.amount);
+    if (formData.amount && (Number.isNaN(parsedAmount) || parsedAmount < 0)) {
+      nextErrors.amount = "Please enter a valid amount";
+    }
 
-    if (Number.isNaN(parsedAmount) || parsedAmount < 0) {
-      alert("Please enter a valid amount");
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors as any);
       return;
     }
 
-    const expenseData = {
-      title: formData.title,
-      category: formData.category,
-      account: formData.account,
-      date: formData.date,
-      amount: parsedAmount,
-    };
+    setIsSubmitting(true);
+    setErrors((prev) => ({ ...prev, submit: "" }));
 
-    if (editingExpense && onUpdateExpense) {
-      onUpdateExpense(editingExpense.id, expenseData);
-    } else {
-      onAddExpense(expenseData);
+    try {
+      const expenseData = {
+        title: formData.title,
+        category: formData.category,
+        account: formData.account,
+        date: formData.date,
+        amount: parsedAmount,
+      };
+
+      if (editingExpense && onUpdateExpense) {
+        await onUpdateExpense(editingExpense.id, expenseData as any);
+      } else {
+        await onAddExpense(expenseData as any);
+      }
+
+      setFormData({
+        title: "",
+        category: categories[0] || "",
+        account: "Cash",
+        date: new Date().toISOString().split("T")[0],
+        amount: "",
+      });
+      setErrors({});
+      onClose();
+    } catch (error) {
+      console.error("Failed to save expense:", error);
+      setErrors((prev) => ({ ...prev, submit: "Failed to save expense" }));
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setFormData({
-      title: "",
-      category: categories[0] || "",
-      account: "Cash",
-      date: new Date().toISOString().split("T")[0],
-      amount: "",
-    });
-    onClose();
   };
 
   const handleAddCategory = async () => {
     const categoryName = newCategory.trim();
 
     if (!categoryName) {
-      alert("Please enter a category name");
+      setCategoryError("Please enter a category name");
       return;
     }
 
@@ -234,7 +257,7 @@ export default function AddExpenseModal({
         return;
       }
 
-      const response = await fetch("/api/expense-categories", {
+      const response = await fetch("/api/expense/expense-categories", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -305,6 +328,11 @@ export default function AddExpenseModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {errors.submit && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-600">{errors.submit}</p>
+            </div>
+          )}
           {/* Title */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -318,6 +346,9 @@ export default function AddExpenseModal({
               placeholder="Enter expense title"
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-400 text-gray-900"
             />
+            {errors.title && (
+              <p className="text-xs text-red-600 mt-2">{errors.title}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -434,6 +465,9 @@ export default function AddExpenseModal({
                   className="w-full pl-14 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-400 text-gray-900"
                 />
               </div>
+              {errors.amount && (
+                <p className="text-xs text-red-600 mt-2">{errors.amount}</p>
+              )}
             </div>
           </div>
 
@@ -448,9 +482,10 @@ export default function AddExpenseModal({
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition"
+              disabled={isSubmitting}
+              className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition disabled:opacity-50"
             >
-              {editingExpense ? "Update Expense" : "Add Expense"}
+              {isSubmitting ? (editingExpense ? "Updating..." : "Adding...") : (editingExpense ? "Update Expense" : "Add Expense")}
             </button>
           </div>
         </form>

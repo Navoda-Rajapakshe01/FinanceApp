@@ -66,7 +66,7 @@ export default function ExpensesView() {
 			}
 
 			// Request expenses for the currently selected month only
-			const url = `/api/expenses?month=${selectedMonth}`;
+			const url = `/api/expense/expenses?month=${selectedMonth}`;
 			const response = await fetch(url, {
 				method: "GET",
 				headers: {
@@ -128,6 +128,10 @@ export default function ExpensesView() {
 	);
 	const totalMonthExpenses = monthExpenses.reduce((sum, e) => sum + e.amount, 0);
 
+	const formatCurrency = (value: number) => {
+		return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+	};
+
 	const handleAddExpense = (newExpense: {
 		title: string;
 		category: string;
@@ -140,11 +144,15 @@ export default function ExpensesView() {
 				const token = localStorage.getItem("token");
 
 				if (!token) {
-					alert("Please log in again to add expenses");
+					setToast({
+						isOpen: true,
+						message: "Please log in again to add expenses",
+						type: "error",
+					});
 					return;
 				}
 
-				const response = await fetch("/api/expenses", {
+				const response = await fetch("/api/expense/expenses", {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
@@ -164,7 +172,6 @@ export default function ExpensesView() {
 					return;
 				}
 
-				// Refresh the list for the selected month
 				await fetchExpenses();
 				setIsModalOpen(false);
 				setToast({
@@ -203,7 +210,7 @@ export default function ExpensesView() {
 					return;
 				}
 
-				const response = await fetch(`/api/expenses?id=${expenseId}`, {
+				const response = await fetch(`/api/expense/expenses?id=${expenseId}`, {
 					method: "PUT",
 					headers: {
 						"Content-Type": "application/json",
@@ -256,7 +263,7 @@ export default function ExpensesView() {
 				return;
 			}
 
-			const response = await fetch(`/api/expenses?id=${expenseId}`, {
+			const response = await fetch(`/api/expense/expenses?id=${expenseId}`, {
 				method: "DELETE",
 				headers: {
 					Authorization: `Bearer ${token}`,
@@ -386,21 +393,21 @@ export default function ExpensesView() {
 					<div className="flex flex-col items-center justify-center py-16">
 						<p className="text-gray-500 font-medium">Loading expenses...</p>
 					</div>
-			) : allExpenses.length > 0 ? (
+			) : monthExpenses.length > 0 ? (
 				<div>
 					<div className="p-6 bg-red-50 border-b border-red-200">
 						<div className="flex items-center justify-between">
 							<div>
 								<p className="text-sm font-medium text-red-700">Total Expenses</p>
-								<p className="text-3xl font-bold text-red-600 mt-2">LKR {totalExpenses.toFixed(2)}</p>
+								<p className="text-3xl font-bold text-red-600 mt-2">LKR {formatCurrency(totalMonthExpenses)}</p>
 							</div>
 							<div className="text-right">
-								<p className="text-sm text-red-600 font-semibold">{allExpenses.length} transactions</p>
+								<p className="text-sm text-red-600 font-semibold">{monthExpenses.length} transactions</p>
 							</div>
 						</div>
 					</div>
 					<div className="divide-y divide-gray-100">
-						{allExpenses.map((expense) => (
+						{monthExpenses.map((expense) => (
 							<div
 								key={expense.id}
 								className="p-6 flex items-center justify-between hover:bg-gray-50 transition"
@@ -422,20 +429,23 @@ export default function ExpensesView() {
 										</div>
 									</div>
 								</div>
-								<div className="flex items-center gap-2">
-									<button 
-										onClick={() => {
+								<div className="flex items-center gap-6">
+									<span className="text-xl font-bold text-red-600">LKR {formatCurrency(expense.amount)}</span>
+									<div className="flex items-center gap-2">
+										<button 
+											onClick={() => {
 											setEditingExpense(expense);
 											setIsModalOpen(true);
-										}}
-										className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
-										<Edit2 size={18} />
-									</button>
-									<button 
-										onClick={() => setConfirmDialog({ isOpen: true, expenseId: expense.id })}
-										className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
-										<Trash2 size={18} />
-									</button>
+											}}
+											className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
+											<Edit2 size={18} />
+										</button>
+										<button 
+											onClick={() => setConfirmDialog({ isOpen: true, expenseId: expense.id })}
+											className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
+											<Trash2 size={18} />
+										</button>
+									</div>
 								</div>
 							</div>
 						))}

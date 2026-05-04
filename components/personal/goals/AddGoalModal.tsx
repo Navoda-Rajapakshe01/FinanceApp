@@ -57,6 +57,9 @@ export default function AddGoalModal({
     currentAmount: "",
     deadline: new Date().toISOString().split("T")[0],
   });
+  const [errors, setErrors] = useState<{ title?: string; targetAmount?: string }>(
+    {}
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -88,15 +91,25 @@ export default function AddGoalModal({
       ...prev,
       [name]: value,
     }));
+    if (name in errors) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.targetAmount) {
-      alert("Please fill in all required fields");
+    const nextErrors: { title?: string; targetAmount?: string } = {};
+    if (!formData.title) {
+      nextErrors.title = "Title is required";
+    }
+    if (!formData.targetAmount) {
+      nextErrors.targetAmount = "Target amount is required";
+    }
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
-    
+
     const goalData = {
       title: formData.title,
       category: formData.category,
@@ -118,6 +131,7 @@ export default function AddGoalModal({
       currentAmount: "",
       deadline: new Date().toISOString().split("T")[0],
     });
+    setErrors({});
     onClose();
   };
 
@@ -152,6 +166,9 @@ export default function AddGoalModal({
               placeholder="e.g., Limit monthly shopping"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-gray-900"
             />
+            {errors.title && (
+              <p className="text-xs text-red-600 mt-2">{errors.title}</p>
+            )}
           </div>
 
           {/* Category */}
@@ -188,6 +205,9 @@ export default function AddGoalModal({
               min="0"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-gray-900"
             />
+            {errors.targetAmount && (
+              <p className="text-xs text-red-600 mt-2">{errors.targetAmount}</p>
+            )}
           </div>
 
           {/* Current Amount */}

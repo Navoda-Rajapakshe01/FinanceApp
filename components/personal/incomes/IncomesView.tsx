@@ -64,7 +64,7 @@ export default function IncomesView() {
 			}
 
 			// Request incomes for the currently selected month only
-			const url = `/api/incomes?month=${selectedMonth}`;
+			const url = `/api/income/incomes?month=${selectedMonth}`;
 			const response = await fetch(url, {
 				method: "GET",
 				headers: {
@@ -126,6 +126,10 @@ export default function IncomesView() {
 	);
 	const totalMonthIncome = monthIncomes.reduce((sum, i) => sum + i.amount, 0);
 
+	const formatCurrency = (value: number) => {
+		return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+	};
+
 	const handleAddIncome = async (newIncome: {
 		description: string;
 		category: string;
@@ -157,7 +161,7 @@ export default function IncomesView() {
 					return;
 				}
 
-				const response = await fetch(`/api/incomes?id=${incomeId}`, {
+				const response = await fetch(`/api/income/incomes?id=${incomeId}`, {
 					method: "PUT",
 					headers: {
 						"Content-Type": "application/json",
@@ -220,7 +224,7 @@ export default function IncomesView() {
 				return;
 			}
 
-			const response = await fetch(`/api/incomes?id=${incomeId}`, {
+			const response = await fetch(`/api/income/incomes?id=${incomeId}`, {
 				method: "DELETE",
 				headers: {
 					Authorization: `Bearer ${token}`,
@@ -356,7 +360,7 @@ export default function IncomesView() {
 						<div className="flex items-center justify-between">
 							<div>
 								<p className="text-sm font-medium text-green-700">Total Income for {selectedMonthName} {selectedYear}</p>
-								<p className="text-3xl font-bold text-green-600 mt-2">LKR {totalMonthIncome.toFixed(2)}</p>
+								<p className="text-3xl font-bold text-green-600 mt-2">LKR {formatCurrency(totalMonthIncome)}</p>
 							</div>
 							<div className="text-right">
 								<p className="text-sm text-green-600 font-semibold">{monthIncomes.length} transactions</p>
@@ -385,7 +389,7 @@ export default function IncomesView() {
 								</div>
 								<div className="flex items-center gap-6">
 									<span className="text-xl font-bold text-green-600">
-										LKR {income.amount.toFixed(2)}
+										LKR {formatCurrency(income.amount)}
 									</span>
 									<div className="flex items-center gap-2">
 										<button 
