@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { User, Calendar } from "lucide-react";
 
 interface Consultant {
@@ -14,74 +14,38 @@ interface Consultant {
 
 export default function ConsultantsView() {
 	const [showBrowse, setShowBrowse] = useState(true);
+	const [consultants, setConsultants] = useState<Consultant[]>([]);
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
-	// Sample consultants data
-	const consultants: Consultant[] = [
-		{
-			id: "1",
-			name: "Nimal Perera",
-			specialty: "Financial Planning",
-			experience: "10+ years",
-			certifications: ["CFP", "CFA"],
-			color: "from-purple-400 to-purple-600",
-		},
-		{
-			id: "2",
-			name: "Dilshan Fernando",
-			specialty: "Investment Advisory",
-			experience: "6-10 years",
-			certifications: ["CFA", "MBA"],
-			color: "from-purple-400 to-purple-600",
-		},
-		{
-			id: "3",
-			name: "Amara Jayasinghe",
-			specialty: "Retirement Planning",
-			experience: "10+ years",
-			certifications: ["CFP", "CHFC"],
-			color: "from-purple-400 to-purple-600",
-		},
-		{
-			id: "4",
-			name: "Kasun Wickramasinghe",
-			specialty: "Tax Planning",
-			experience: "6-10 years",
-			certifications: ["CPA", "CFP"],
-			color: "from-purple-400 to-purple-600",
-		},
-		{
-			id: "5",
-			name: "Sanduni De Silva",
-			specialty: "Wealth Management",
-			experience: "10+ years",
-			certifications: ["CFP", "CFA", "CIMA"],
-			color: "from-purple-400 to-purple-600",
-		},
-		{
-			id: "6",
-			name: "Thilina Rajapaksa",
-			specialty: "Business Finance",
-			experience: "6-10 years",
-			certifications: ["MBA", "CFP"],
-			color: "from-purple-400 to-purple-600",
-		},
-		{
-			id: "7",
-			name: "Chamari Gunasekara",
-			specialty: "Estate Planning",
-			experience: "10+ years",
-			certifications: ["CFP", "JD"],
-			color: "from-purple-400 to-purple-600",
-		},
-		{
-			id: "8",
-			name: "Rohan Bandara",
-			specialty: "Insurance Planning",
-			experience: "3-6 years",
-			certifications: ["CFP", "CLU"],
-			color: "from-purple-400 to-purple-600",
-		},
-	];
+	useEffect(() => {
+		const fetchConsultants = async () => {
+			setLoading(true);
+			try {
+				const res = await fetch('/api/consultants');
+				const data = await res.json();
+				if (!res.ok) throw new Error(data?.error || 'Failed to load');
+
+				const mapped: Consultant[] = (data.consultants || []).map((c: any) => ({
+					id: c.id,
+					name: c.fullName,
+					specialty: c.specialization,
+					experience: c.yearsOfExperience === '10+' ? '10+ years' : `${c.yearsOfExperience} years`,
+					certifications: c.certifications ? c.certifications.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+					color: 'from-purple-400 to-purple-600',
+				}));
+
+				setConsultants(mapped);
+			} catch (err: any) {
+				console.error(err);
+				setError(err.message || 'Error fetching consultants');
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		void fetchConsultants();
+	}, []);
 
 	return (
 		<div>
@@ -96,22 +60,11 @@ export default function ConsultantsView() {
 					</div>
 					<div className="flex gap-3 flex-shrink-0">
 						<button
-							onClick={() => setShowBrowse(true)}
-							className={`px-6 py-2 rounded-lg font-semibold transition whitespace-nowrap ${
-								showBrowse
-									? "bg-blue-600 text-white shadow-lg hover:bg-blue-700"
-									: "border border-gray-300 text-gray-700 hover:bg-gray-50"
-							}`}
-						>
-							Browse Consultants
-						</button>
-						<button
 							onClick={() => setShowBrowse(false)}
-							className={`px-6 py-2 rounded-lg font-semibold transition whitespace-nowrap ${
-								!showBrowse
+							className={`px-6 py-2 rounded-lg font-semibold transition whitespace-nowrap ${!showBrowse
 									? "bg-blue-600 text-white shadow-lg hover:bg-blue-700"
 									: "border border-gray-300 text-gray-700 hover:bg-gray-50"
-							}`}
+								}`}
 						>
 							My Appointments (0)
 						</button>

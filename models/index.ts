@@ -5,3 +5,4 @@ export { IncomeCategory, incomeCategorySchema } from "./income-category";
 export { Expense, expenseSchema } from "./expense";
 export { Income, incomeSchema } from "./income";
 export { Month, monthSchema } from "./month";
+export { Goal, goalSchema } from "./goal";

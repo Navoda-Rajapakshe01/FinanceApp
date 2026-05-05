@@ -1,58 +1,170 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Target, Plus, Edit2, Trash2 } from "lucide-react";
-import AddGoalModal from "./AddGoalModal";
+import AddGoalModal from "../goals/AddGoalModal";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import Toast from "@/components/Toast";
 
 interface Goal {
 	id: string;
 	title: string;
 	targetAmount: number;
-	currentAmount: number;
+	warningLimit?: number;
 	deadline: string;
 	category: string;
 }
 
 export default function GoalsView() {
-	// Sample goals data (would come from backend)
 	const [goals, setGoals] = useState<Goal[]>([]);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+	const [isLoadingGoals, setIsLoadingGoals] = useState(false);
+	const [goalError, setGoalError] = useState("");
+	const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, goalId: "" });
+	const [toast, setToast] = useState({ isOpen: false, message: "", type: "success" as "success" | "error" });
+
+	
+
+	const fetchGoals = async () => {
+		setIsLoadingGoals(true);
+		setGoalError("");
+		try {
+			const token = localStorage.getItem("token");
+			if (!token) {
+				setGoalError("Please log in again to load goals");
+				return;
+			}
+			const response = await fetch("/api/personal/goals", {
+				method: "GET",
+				headers: { Authorization: `Bearer ${token}` },
+			});
+			const data = await response.json();
+			if (!response.ok) {
+				setGoalError(data.error || "Failed to load goals");
+				return;
+			}
+			setGoals(data.goals || []);
+		} catch (error) {
+			console.error("Failed to fetch goals:", error);
+			setGoalError("Failed to load goals");
+		} finally {
+			setIsLoadingGoals(false);
+		}
+	};
+
+	useEffect(() => {
+		void fetchGoals();
+	}, []);
 
 	const handleAddGoal = (newGoal: {
 		title: string;
 		category: string;
 		targetAmount: number;
-		currentAmount: number;
+		warningLimit?: number;
 		deadline: string;
 	}) => {
-		const goal: Goal = {
-			id: Date.now().toString(),
-			...newGoal,
-		};
-		setGoals((prev) => [...prev, goal]);
-		setIsModalOpen(false);
+		void (async () => {
+			try {
+				const token = localStorage.getItem("token");
+				if (!token) {
+					setToast({ isOpen: true, message: "Please log in again to add goals", type: "error" });
+					return;
+				}
+
+				const response = await fetch("/api/personal/goals", {
+					method: "POST",
+					headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+					body: JSON.stringify(newGoal),
+				});
+
+				const data = await response.json();
+				if (!response.ok) {
+					setToast({ isOpen: true, message: data.error || "Failed to save goal", type: "error" });
+					return;
+				}
+
+				await fetchGoals();
+				setIsModalOpen(false);
+				setToast({ isOpen: true, message: "Goal added successfully", type: "success" });
+			} catch (error) {
+				console.error("Failed to save goal:", error);
+				setToast({ isOpen: true, message: "Failed to save goal", type: "error" });
+			}
+		})();
+	};
+
+	const formatCurrency = (value: number) => {
+		return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 	};
 
 	const handleUpdateGoal = (goalId: string, updatedGoal: {
 		title: string;
 		category: string;
 		targetAmount: number;
-		currentAmount: number;
+		warningLimit?: number;
 		deadline: string;
 	}) => {
-		setGoals((prev) =>
-			prev.map((g) =>
-				g.id === goalId
-					? {
-							...g,
-							...updatedGoal,
-					  }
-					: g
-			)
-		);
-		setIsModalOpen(false);
-		setEditingGoal(null);
+		void (async () => {
+			try {
+				const token = localStorage.getItem("token");
+				if (!token) {
+					setToast({ isOpen: true, message: "Please log in again to update goal", type: "error" });
+					return;
+				}
+
+				const response = await fetch(`/api/personal/goals?id=${goalId}`, {
+					method: "PUT",
+					headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+					body: JSON.stringify(updatedGoal),
+				});
+
+				const data = await response.json();
+				if (!response.ok) {
+					setToast({ isOpen: true, message: data.error || "Failed to update goal", type: "error" });
+					return;
+				}
+
+				await fetchGoals();
+				setIsModalOpen(false);
+				setEditingGoal(null);
+				setToast({ isOpen: true, message: "Goal updated successfully", type: "success" });
+			} catch (error) {
+				console.error("Failed to update goal:", error);
+				setToast({ isOpen: true, message: "Failed to update goal", type: "error" });
+			}
+		})();
+	};
+
+	const handleDeleteGoal = async () => {
+		const { goalId } = confirmDialog;
+		try {
+			const token = localStorage.getItem("token");
+			if (!token) {
+				setToast({ isOpen: true, message: "Please log in again to delete goal", type: "error" });
+				return;
+			}
+
+			const response = await fetch(`/api/personal/goals?id=${goalId}`, {
+				method: "DELETE",
+				headers: { Authorization: `Bearer ${token}` },
+			});
+
+			if (!response.ok) {
+				const data = await response.json();
+				setToast({ isOpen: true, message: data.error || "Failed to delete goal", type: "error" });
+				setConfirmDialog({ isOpen: false, goalId: "" });
+				return;
+			}
+
+			await fetchGoals();
+			setConfirmDialog({ isOpen: false, goalId: "" });
+			setToast({ isOpen: true, message: "Goal deleted successfully", type: "success" });
+		} catch (error) {
+			console.error("Failed to delete goal:", error);
+			setToast({ isOpen: true, message: "Failed to delete goal", type: "error" });
+			setConfirmDialog({ isOpen: false, goalId: "" });
+		}
 	};
 
 	return (
@@ -87,10 +199,13 @@ export default function GoalsView() {
 
 			{/* Goals List */}
 			<div className="bg-white rounded-2xl shadow-lg border border-gray-100">
-				{goals.length > 0 ? (
+				{isLoadingGoals ? (
+					<div className="flex flex-col items-center justify-center py-16">
+						<p className="text-gray-500 font-medium">Loading goals...</p>
+					</div>
+				) : goals.length > 0 ? (
 					<div className="divide-y divide-gray-100">
 						{goals.map((goal) => {
-							const progress = (goal.currentAmount / goal.targetAmount) * 100;
 							return (
 								<div
 									key={goal.id}
@@ -114,35 +229,29 @@ export default function GoalsView() {
 										<div className="flex items-center gap-6">
 											<div className="text-right">
 												<p className="text-xl font-bold text-gray-900">
-													LKR {goal.currentAmount.toFixed(2)}
+													Target: LKR {formatCurrency(goal.targetAmount)}
 												</p>
-												<p className="text-sm text-gray-500">
-													of LKR {goal.targetAmount.toFixed(2)}
-												</p>
+												{goal.warningLimit !== undefined && (
+													<p className="text-sm text-yellow-700 mt-1">Warning at: LKR {formatCurrency(goal.warningLimit)}</p>
+												)}
 											</div>
-											<div className="flex items-center gap-2">
-											<button 
-												onClick={() => {
-													setEditingGoal(goal);
-													setIsModalOpen(true);
-												}}
-												className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
-													<Edit2 size={18} />
-												</button>
-												<button className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
-													<Trash2 size={18} />
-												</button>
-											</div>
+												<div className="flex items-center gap-2">
+												<button 
+													onClick={() => {
+														setEditingGoal(goal);
+														setIsModalOpen(true);
+													}}
+													className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
+														<Edit2 size={18} />
+													</button>
+													<button 
+														onClick={() => setConfirmDialog({ isOpen: true, goalId: goal.id })}
+														className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
+														<Trash2 size={18} />
+													</button>
+												</div>
 										</div>
 									</div>
-									{/* Progress Bar */}
-									<div className="w-full bg-gray-200 rounded-full h-2">
-										<div
-											className="bg-gradient-to-r from-teal-500 to-green-500 h-2 rounded-full transition-all"
-											style={{ width: `${Math.min(progress, 100)}%` }}
-										></div>
-									</div>
-									<p className="text-sm text-gray-600 mt-2">{progress.toFixed(1)}% completed</p>
 								</div>
 							);
 						})}
@@ -169,6 +278,24 @@ export default function GoalsView() {
 					</div>
 				)}
 			</div>
+
+			<ConfirmDialog
+				isOpen={confirmDialog.isOpen}
+				title="Delete Goal"
+				message="Are you sure you want to delete this goal? This action cannot be undone."
+				confirmText="Delete"
+				cancelText="Cancel"
+				isDangerous={true}
+				onConfirm={handleDeleteGoal}
+				onCancel={() => setConfirmDialog({ isOpen: false, goalId: "" })}
+			/>
+
+			<Toast
+				isOpen={toast.isOpen}
+				message={toast.message}
+				type={toast.type}
+				onClose={() => setToast({ ...toast, isOpen: false })}
+			/>
 		</div>
 	);
 }
