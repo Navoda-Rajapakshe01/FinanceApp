@@ -6,15 +6,21 @@ export async function GET(request: NextRequest) {
   try {
     await connectDB();
 
-    const consultants = await Consultant.find({}, { password: 0 }).sort({ createdAt: -1 }).lean();
+    // Only return consultants who acceptBookings
+    const consultants = await Consultant.find({ acceptBookings: true }, { password: 0 }).sort({ createdAt: -1 }).lean();
 
     const sanitized = consultants.map((c: any) => ({
       id: c._id.toString(),
       fullName: c.fullName,
-      specialization: c.specialization,
-      yearsOfExperience: c.yearsOfExperience,
+      bio: c.bio || "",
+      specializations: c.specializations || (c.specialization ? [c.specialization] : []),
+      yearsOfExperience: c.yearsOfExperience || "",
       certifications: c.certifications || "",
       phone: c.phone || "",
+      hourlyRate: c.hourlyRate || null,
+      sessionDuration: c.sessionDuration || null,
+      acceptBookings: !!c.acceptBookings,
+      location: c.location || "",
       createdAt: c.createdAt,
     }));
 

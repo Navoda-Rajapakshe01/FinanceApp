@@ -146,26 +146,6 @@ export default function ConsultantDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Welcome Message */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-8">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-              <MessageSquare size={24} className="text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
-                Welcome to Your Consultant Dashboard
-              </h2>
-              <p className="text-gray-700 mb-2">
-                As a financial consultant on CashSpace, you'll connect with clients seeking professional financial guidance. Users can browse your profile and book consultations directly with you.
-              </p>
-              <p className="text-sm text-gray-600">
-                When clients book appointments, they'll appear in your dashboard for easy management.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Consultant Profile Card */}
         <div className="bg-gradient-to-r from-purple-600 to-purple-800 rounded-2xl shadow-xl p-8 mb-8 text-white relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl opacity-10"></div>
@@ -260,33 +240,30 @@ export default function ConsultantDashboard() {
         <div className="flex items-center gap-4 mb-6 border-b border-gray-200">
           <button
             onClick={() => setActiveTab("clients")}
-            className={`flex items-center gap-2 px-4 py-3 font-semibold transition ${
-              activeTab === "clients"
+            className={`flex items-center gap-2 px-4 py-3 font-semibold transition ${activeTab === "clients"
                 ? "text-purple-600 border-b-2 border-purple-600"
                 : "text-gray-600 hover:text-gray-900"
-            }`}
+              }`}
           >
             <Users size={18} />
             My Clients
           </button>
           <button
             onClick={() => setActiveTab("schedule")}
-            className={`flex items-center gap-2 px-4 py-3 font-semibold transition ${
-              activeTab === "schedule"
+            className={`flex items-center gap-2 px-4 py-3 font-semibold transition ${activeTab === "schedule"
                 ? "text-purple-600 border-b-2 border-purple-600"
                 : "text-gray-600 hover:text-gray-900"
-            }`}
+              }`}
           >
             <Clock size={18} />
             Schedule
           </button>
           <button
             onClick={() => setActiveTab("profile")}
-            className={`flex items-center gap-2 px-4 py-3 font-semibold transition ${
-              activeTab === "profile"
+            className={`flex items-center gap-2 px-4 py-3 font-semibold transition ${activeTab === "profile"
                 ? "text-purple-600 border-b-2 border-purple-600"
                 : "text-gray-600 hover:text-gray-900"
-            }`}
+              }`}
           >
             <User size={18} />
             Profile

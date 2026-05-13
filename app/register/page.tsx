@@ -376,9 +376,6 @@ function ConsultantRegistration({ onBack }: RegistrationProps) {
     fullName: "",
     email: "",
     phone: "",
-    specialization: "",
-    yearsOfExperience: "",
-    certifications: "",
     password: "",
     confirmPassword: "",
   });
@@ -404,10 +401,6 @@ function ConsultantRegistration({ onBack }: RegistrationProps) {
     if (!formData.fullName) newErrors.fullName = "Full name is required";
     if (!formData.email) newErrors.email = "Email is required";
     if (!formData.phone) newErrors.phone = "Phone number is required";
-    if (!formData.specialization)
-      newErrors.specialization = "Specialization is required";
-    if (!formData.yearsOfExperience)
-      newErrors.yearsOfExperience = "Years of experience is required";
     if (!formData.password) newErrors.password = "Password is required";
     if (formData.password !== formData.confirmPassword)
       newErrors.confirmPassword = "Passwords do not match";
@@ -431,9 +424,6 @@ function ConsultantRegistration({ onBack }: RegistrationProps) {
           fullName: formData.fullName,
           email: formData.email,
           phone: formData.phone,
-          specialization: formData.specialization,
-          yearsOfExperience: formData.yearsOfExperience,
-          certifications: formData.certifications,
           password: formData.password,
           confirmPassword: formData.confirmPassword,
         }),
@@ -466,7 +456,7 @@ function ConsultantRegistration({ onBack }: RegistrationProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center px-4 py-8">
-      <div className="bg-white rounded-lg shadow-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
         <button
           onClick={onBack}
           className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-8 font-medium text-sm"
@@ -493,164 +483,95 @@ function ConsultantRegistration({ onBack }: RegistrationProps) {
               <p className="text-red-700 text-sm">{apiError}</p>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Full Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                autoComplete="off"
-                className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.fullName ? "border-red-500" : "border-gray-300"}`}
-                placeholder="Dr. Jane Smith"
-              />
-              {errors.fullName && (
-                <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                autoComplete="off"
-                className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.email ? "border-red-500" : "border-gray-300"}`}
-                placeholder="jane@example.com"
-              />
-              {errors.email && (
-                <p className="text-red-500 text-xs mt-1">{errors.email}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Phone Number <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                autoComplete="off"
-                className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.phone ? "border-red-500" : "border-gray-300"}`}
-                placeholder="+94 71 123-4567"
-              />
-              {errors.phone && (
-                <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Specialization <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="specialization"
-                value={formData.specialization}
-                onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.specialization ? "border-red-500" : "border-gray-300"}`}
-              >
-                <option value="">Select Specialization</option>
-                <option value="investment">Investment Management</option>
-                <option value="retirement">Retirement Planning</option>
-                <option value="tax">Tax Planning</option>
-                <option value="wealth">Wealth Management</option>
-                <option value="estate">Estate Planning</option>
-              </select>
-              {errors.specialization && (
-                <p className="text-red-500 text-xs mt-1">
-                  {errors.specialization}
-                </p>
-              )}
-            </div>
-          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Years of Experience <span className="text-red-500">*</span>
+              Full Name <span className="text-red-500">*</span>
             </label>
-            <select
-              name="yearsOfExperience"
-              value={formData.yearsOfExperience}
+            <input
+              type="text"
+              name="fullName"
+              value={formData.fullName}
               onChange={handleChange}
-              className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.yearsOfExperience ? "border-red-500" : "border-gray-300"}`}
-            >
-              <option value="">Select Experience Level</option>
-              <option value="0-2">0-2 years</option>
-              <option value="2-5">2-5 years</option>
-              <option value="5-10">5-10 years</option>
-              <option value="10+">10+ years</option>
-            </select>
-            {errors.yearsOfExperience && (
-              <p className="text-red-500 text-xs mt-1">
-                {errors.yearsOfExperience}
-              </p>
+              autoComplete="off"
+              className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.fullName ? "border-red-500" : "border-gray-300"}`}
+              placeholder="Dr. Nihal Perera"
+            />
+            {errors.fullName && (
+              <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>
             )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Certifications
+              Email <span className="text-red-500">*</span>
             </label>
-            <textarea
-              name="certifications"
-              value={formData.certifications}
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
               onChange={handleChange}
               autoComplete="off"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-              placeholder="CFP, CFA, CPA, etc."
-              rows={2}
+              className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.email ? "border-red-500" : "border-gray-300"}`}
+              placeholder="nihal@example.com"
             />
+            {errors.email && (
+              <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Password <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                autoComplete="new-password"
-                className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.password ? "border-red-500" : "border-gray-300"}`}
-                placeholder="••••••••"
-              />
-              {errors.password && (
-                <p className="text-red-500 text-xs mt-1">{errors.password}</p>
-              )}
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Phone Number <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              autoComplete="off"
+              className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.phone ? "border-red-500" : "border-gray-300"}`}
+              placeholder="+94 71 123-4567"
+            />
+            {errors.phone && (
+              <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
+            )}
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Confirm Password <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                autoComplete="new-password"
-                className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.confirmPassword ? "border-red-500" : "border-gray-300"}`}
-                placeholder="••••••••"
-              />
-              {errors.confirmPassword && (
-                <p className="text-red-500 text-xs mt-1">
-                  {errors.confirmPassword}
-                </p>
-              )}
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Password <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              autoComplete="new-password"
+              className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.password ? "border-red-500" : "border-gray-300"}`}
+              placeholder="••••••••"
+            />
+            {errors.password && (
+              <p className="text-red-500 text-xs mt-1">{errors.password}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Confirm Password <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="password"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              autoComplete="new-password"
+              className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 ${errors.confirmPassword ? "border-red-500" : "border-gray-300"}`}
+              placeholder="••••••••"
+            />
+            {errors.confirmPassword && (
+              <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>
+            )}
           </div>
 
           <button

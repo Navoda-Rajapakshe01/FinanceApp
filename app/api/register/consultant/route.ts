@@ -10,89 +10,28 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const {
-      fullName,
-      email,
-      phone,
-      specialization,
-      yearsOfExperience,
-      certifications,
-      password,
-      confirmPassword,
-    } = await request.json();
+    const { fullName, email, phone, password, confirmPassword } = await request.json();
 
-    // Validation
-    const requiredFields = [
-      fullName,
-      email,
-      phone,
-      specialization,
-      yearsOfExperience,
-      password,
-      confirmPassword,
-    ];
-
+    // Basic validation
+    const requiredFields = [fullName, email, phone, password, confirmPassword];
     if (requiredFields.some((field) => !field)) {
-      return NextResponse.json(
-        { error: "All required fields must be provided" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "All required fields must be provided" }, { status: 400 });
     }
 
     // Validate email format
     if (!validateEmail(email)) {
-      return NextResponse.json(
-        { error: "Please provide a valid email address" },
-        { status: 400 }
-      );
-    }
-
-    // Validate specialization
-    const validSpecializations = [
-      "investment",
-      "retirement",
-      "tax",
-      "wealth",
-      "estate",
-    ];
-    if (!validSpecializations.includes(specialization)) {
-      return NextResponse.json(
-        {
-          error: "Invalid specialization. Must be one of: investment, retirement, tax, wealth, estate",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Validate years of experience
-    const validExperience = ["0-2", "2-5", "5-10", "10+"];
-    if (!validExperience.includes(yearsOfExperience)) {
-      return NextResponse.json(
-        {
-          error: "Invalid experience level. Must be one of: 0-2, 2-5, 5-10, 10+",
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Please provide a valid email address" }, { status: 400 });
     }
 
     // Check password match
     if (password !== confirmPassword) {
-      return NextResponse.json(
-        { error: "Passwords do not match" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Passwords do not match" }, { status: 400 });
     }
 
     // Validate password strength
     const passwordValidation = validatePassword(password);
     if (!passwordValidation.valid) {
-      return NextResponse.json(
-        {
-          error: "Password requirements not met",
-          details: passwordValidation.errors,
-        },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Password requirements not met", details: passwordValidation.errors }, { status: 400 });
     }
 
     // Connect to database
@@ -115,9 +54,6 @@ export async function POST(request: NextRequest) {
       fullName,
       email,
       phone,
-      specialization,
-      yearsOfExperience,
-      certifications: certifications || "",
       password: hashedPassword,
       accountType: "consultant",
     });
@@ -137,7 +73,6 @@ export async function POST(request: NextRequest) {
           id: newConsultant._id,
           fullName: newConsultant.fullName,
           email: newConsultant.email,
-          specialization: newConsultant.specialization,
           accountType: newConsultant.accountType,
         },
         token,

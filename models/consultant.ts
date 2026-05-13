@@ -21,15 +21,50 @@ export const consultantSchema = new mongoose.Schema(
     },
     specialization: {
       type: String,
-      required: [true, "Specialization is required"],
       enum: ["investment", "retirement", "tax", "wealth", "estate"],
     },
     yearsOfExperience: {
       type: String,
-      required: [true, "Years of experience is required"],
       enum: ["0-2", "2-5", "5-10", "10+"],
     },
     certifications: {
+      type: String,
+      default: "",
+    },
+    bio: {
+      type: String,
+      default: "",
+      required: true,
+    },
+    specializations: {
+      type: [String],
+      default: [],
+      required: true,
+    },
+    hourlyRate: {
+      type: Number,
+      default: 0,
+      required: true,
+    },
+    sessionDuration: {
+      type: Number,
+      default: 60,
+      required: true,
+    },
+    acceptBookings: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
+    location: {
+      type: String,
+      default: "",
+    },
+    website: {
+      type: String,
+      default: "",
+    },
+    linkedin: {
       type: String,
       default: "",
     },
