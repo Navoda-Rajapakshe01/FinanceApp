@@ -38,8 +38,8 @@ export default function BalanceCards({ totalIncome: incomeProp, totalExpense: ex
         const token = localStorage.getItem("token");
         const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
         const [expRes, incRes] = await Promise.all([
-          fetch(`/api/expense/expenses?month=${selectedMonth}`, headers ? { headers } : undefined),
-          fetch(`/api/income/incomes?month=${selectedMonth}`, headers ? { headers } : undefined),
+          fetch(`/api/personal/expense/expenses?month=${selectedMonth}`, headers ? { headers } : undefined),
+          fetch(`/api/personal/income/incomes?month=${selectedMonth}`, headers ? { headers } : undefined),
         ]);
         const expData = await expRes.json().catch(() => ({}));
         const incData = await incRes.json().catch(() => ({}));

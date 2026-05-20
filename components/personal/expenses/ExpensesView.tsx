@@ -66,7 +66,7 @@ export default function ExpensesView() {
 			}
 
 			// Request expenses for the currently selected month only
-			const url = `/api/expense/expenses?month=${selectedMonth}`;
+			const url = `/api/personal/expense/expenses?month=${selectedMonth}`;
 			const response = await fetch(url, {
 				method: "GET",
 				headers: {
@@ -152,7 +152,7 @@ export default function ExpensesView() {
 					return;
 				}
 
-				const response = await fetch("/api/expense/expenses", {
+				const response = await fetch("/api/personal/expense/expenses", {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
@@ -210,7 +210,7 @@ export default function ExpensesView() {
 					return;
 				}
 
-				const response = await fetch(`/api/expense/expenses?id=${expenseId}`, {
+				const response = await fetch(`/api/personal/expense/expenses?id=${expenseId}`, {
 					method: "PUT",
 					headers: {
 						"Content-Type": "application/json",
@@ -263,7 +263,7 @@ export default function ExpensesView() {
 				return;
 			}
 
-			const response = await fetch(`/api/expense/expenses?id=${expenseId}`, {
+			const response = await fetch(`/api/personal/expense/expenses?id=${expenseId}`, {
 				method: "DELETE",
 				headers: {
 					Authorization: `Bearer ${token}`,

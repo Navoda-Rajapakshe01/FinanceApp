@@ -6,3 +6,5 @@ export { Expense, expenseSchema } from "./expense";
 export { Income, incomeSchema } from "./income";
 export { Month, monthSchema } from "./month";
 export { Goal, goalSchema } from "./goal";
+export { Schedule, scheduleSchema } from "./schedule";
+export { Booking } from "./booking";

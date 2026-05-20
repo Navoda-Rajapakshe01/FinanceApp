@@ -223,7 +223,7 @@ export default function AddIncomeModal({
       }
 
       const method = editingIncome ? "PUT" : "POST";
-      const url = editingIncome ? `/api/income/incomes?id=${editingIncome.id}` : "/api/income/incomes";
+      const url = editingIncome ? `/api/personal/income/incomes?id=${editingIncome.id}` : "/api/personal/income/incomes";
 
       const response = await fetch(url, {
         method,

@@ -64,7 +64,7 @@ export default function IncomesView() {
 			}
 
 			// Request incomes for the currently selected month only
-			const url = `/api/income/incomes?month=${selectedMonth}`;
+			const url = `/api/personal/income/incomes?month=${selectedMonth}`;
 			const response = await fetch(url, {
 				method: "GET",
 				headers: {
@@ -161,7 +161,7 @@ export default function IncomesView() {
 					return;
 				}
 
-				const response = await fetch(`/api/income/incomes?id=${incomeId}`, {
+				const response = await fetch(`/api/personal/income/incomes?id=${incomeId}`, {
 					method: "PUT",
 					headers: {
 						"Content-Type": "application/json",
@@ -224,7 +224,7 @@ export default function IncomesView() {
 				return;
 			}
 
-			const response = await fetch(`/api/income/incomes?id=${incomeId}`, {
+			const response = await fetch(`/api/personal/income/incomes?id=${incomeId}`, {
 				method: "DELETE",
 				headers: {
 					Authorization: `Bearer ${token}`,

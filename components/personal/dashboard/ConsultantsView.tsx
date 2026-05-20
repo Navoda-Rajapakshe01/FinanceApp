@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { User, Calendar, Phone, Globe, Link as LinkIcon, Tag } from "lucide-react";
 
 interface Consultant {
@@ -103,7 +104,11 @@ export default function ConsultantsView() {
 								<div className="flex-1">
 									<div className="flex items-start justify-between">
 										<div>
-											<h3 className="font-bold text-gray-900 text-lg">{consultant.name}</h3>
+																					<h3 className="font-bold text-gray-900 text-lg">
+																						<Link href={`/consultants/${consultant.id}`} className="hover:underline">
+																							{consultant.name}
+																						</Link>
+																					</h3>
 											<div className="text-xs text-gray-500 mt-1 flex items-center gap-3">
 												<span className="flex items-center gap-1"><Calendar size={14} />Experience: {consultant.experience}</span>
 												{consultant.hourlyRate ? <span className="bg-gray-100 px-2 py-1 rounded text-sm font-medium">LKR {consultant.hourlyRate} /hour</span> : null}
@@ -159,9 +164,12 @@ export default function ConsultantsView() {
 											) : null}
 										</div>
 
-										<button className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg font-semibold shadow hover:scale-105 transition">
-											Book Appointment
-										</button>
+																				<Link
+																					href={`/consultants/${consultant.id}`}
+																					className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg font-semibold shadow hover:scale-105 transition inline-flex items-center justify-center"
+																				>
+																					Book Appointment
+																				</Link>
 									</div>
 								</div>
 							</div>

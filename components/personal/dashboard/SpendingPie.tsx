@@ -30,7 +30,7 @@ export default function SpendingPie({ selectedMonth }: Props) {
       try {
         const token = localStorage.getItem("token");
         const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-        const res = await fetch(`/api/expense/expenses?month=${selectedMonth}`, headers ? { headers } : undefined);
+        const res = await fetch(`/api/personal/expense/expenses?month=${selectedMonth}`, headers ? { headers } : undefined);
         const data = await res.json().catch(() => ({}));
         const expenses = data.expenses || [];
         const { startDate, endDate } = getMonthDateRange();
