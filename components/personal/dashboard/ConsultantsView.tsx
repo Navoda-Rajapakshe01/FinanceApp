@@ -26,6 +26,10 @@ export default function ConsultantsView() {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
     const [expandedIds, setExpandedIds] = useState<string[]>([]);
+	const [bookingsCount, setBookingsCount] = useState<number>(() => {
+		try { return Number(localStorage.getItem("bookingsCount") || "0"); } catch (e) { return 0; }
+	});
+	const [bookings, setBookings] = useState<any[]>([]);
 
 	useEffect(() => {
 		const fetchConsultants = async () => {
@@ -62,7 +66,38 @@ export default function ConsultantsView() {
 			}
 		};
 
-		void fetchConsultants();
+
+			void fetchConsultants();
+
+			const fetchBookings = async () => {
+				try {
+					const token = localStorage.getItem("token");
+					const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+					const res = await fetch(`/api/personal/bookings`, headers ? { headers } : undefined);
+					if (!res.ok) {
+						setBookingsCount(0);
+						setBookings([]);
+						return;
+					}
+					const data = await res.json().catch(() => ({}));
+					const list = data.bookings || [];
+					setBookings(list);
+					setBookingsCount(list.length || 0);
+				} catch (e) {
+					console.error("Failed to load personal bookings", e);
+					try { setBookingsCount(Number(localStorage.getItem("bookingsCount") || "0")); } catch { setBookingsCount(0); }
+				}
+			};
+
+			fetchBookings();
+
+			const onStorage = (e: StorageEvent) => {
+				if (e.key === "bookingsUpdated" || e.key === "bookingsCount") {
+					fetchBookings();
+				}
+			};
+			window.addEventListener("storage", onStorage);
+			return () => window.removeEventListener("storage", onStorage);
 	}, []);
 
 	return (
@@ -84,7 +119,7 @@ export default function ConsultantsView() {
 									: "border border-gray-300 text-gray-700 hover:bg-gray-50"
 								}`}
 						>
-							My Appointments (0)
+							My Appointments ({bookingsCount})
 						</button>
 					</div>
 				</div>
@@ -177,23 +212,38 @@ export default function ConsultantsView() {
 					))}
 				</div>
 			) : (
-				// My Appointments
-				<div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-12">
-					<div className="flex flex-col items-center justify-center py-12">
-						<div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-							<Calendar size={40} className="text-purple-600" />
+					// My Appointments
+				<div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+					<h3 className="text-lg font-semibold text-gray-900 mb-4">My Appointments</h3>
+					{bookings.length === 0 ? (
+						<div className="flex flex-col items-center justify-center py-12">
+							<div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mb-4">
+								<Calendar size={40} className="text-purple-600" />
+							</div>
+							<p className="text-gray-500 font-medium text-lg">No appointments yet</p>
+							<p className="text-gray-400 mt-2 text-center max-w-md">
+								Book your first consultation with a financial consultant to get expert advice on your financial goals
+							</p>
+							<button
+								onClick={() => setShowBrowse(true)}
+								className="mt-6 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold shadow-lg hover:bg-blue-700 transition"
+							>
+								Browse Consultants
+							</button>
 						</div>
-						<p className="text-gray-500 font-medium text-lg">No appointments yet</p>
-						<p className="text-gray-400 mt-2 text-center max-w-md">
-							Book your first consultation with a financial consultant to get expert advice on your financial goals
-						</p>
-						<button
-							onClick={() => setShowBrowse(true)}
-							className="mt-6 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold shadow-lg hover:bg-blue-700 transition"
-						>
-							Browse Consultants
-						</button>
-					</div>
+					) : (
+						<div className="space-y-3">
+							{bookings.map((b) => (
+								<div key={b.id} className="p-4 border rounded-md flex items-center justify-between">
+									<div>
+										<div className="text-sm text-gray-500">{b.consultantName}</div>
+										<div className="font-medium text-gray-900">{b.date} • {b.start} — {b.end}</div>
+									</div>
+									<div className="text-sm text-gray-500">{b.status}</div>
+								</div>
+							))}
+						</div>
+					)}
 				</div>
 			)}
 		</div>

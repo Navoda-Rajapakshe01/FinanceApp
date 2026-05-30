@@ -7,6 +7,7 @@ const bookingSchema = new mongoose.Schema({
   end: { type: String, required: true },
   clientName: { type: String },
   clientEmail: { type: String },
+  stripeSessionId: { type: String, index: true },
   status: { type: String, default: "confirmed" },
   createdAt: { type: Date, default: Date.now },
 });

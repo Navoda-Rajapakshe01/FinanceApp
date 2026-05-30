@@ -65,7 +65,7 @@ export default function AddIncomeModal({
         return;
       }
 
-      const response = await fetch("/api/income/income-categories", {
+      const response = await fetch("/api/personal/income/income-categories", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -280,7 +280,7 @@ export default function AddIncomeModal({
         return;
       }
 
-      const response = await fetch("/api/income/income-categories", {
+      const response = await fetch("/api/personal/income/income-categories", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -1,7 +1,7 @@
 import React from "react";
 import Header from "@/components/Header";
 import { connectDB } from "@/lib/db";
-import { Consultant, Schedule } from "@/models";
+import { Consultant, Schedule, Booking } from "@/models";
 import Link from "next/link";
 import BookingForm from "@/components/consultants/BookingForm";
 import { Phone, Globe, Tag } from "lucide-react";
@@ -29,10 +29,43 @@ export default async function ConsultantPage({ params }: Props) {
       );
     }
 
-    const scheduleDoc: any = await Schedule.findOne({ consultant: consult._id }).lean();
-    const days = (scheduleDoc && scheduleDoc.days) || [];
-    // convert scheduleDoc to a plain serializable object to pass to client components
-    const schedule = scheduleDoc ? JSON.parse(JSON.stringify(scheduleDoc)) : {};
+    // load schedule for booking form
+    const sched = await Schedule.findOne({ consultant: consult._id }).lean();
+
+    // annotate date slots with `booked` flag by checking existing bookings
+    let dateSlots: any[] = [];
+    if (Array.isArray(sched?.dates) && sched.dates.length > 0) {
+      const dateList = sched.dates.map((d: any) => d.date);
+      const bookings = await Booking.find({ consultant: consult._id, date: { $in: dateList } }).lean();
+
+      dateSlots = sched.dates.map((d: any) => ({
+        date: d.date,
+        slots: (d.slots || []).map((s: any) => ({
+          start: s.start,
+          end: s.end,
+          booked: bookings.some((b: any) => b.date === d.date && b.start === s.start && b.end === s.end),
+        })),
+        available: true,
+      }));
+
+      // include any booked-only dates not present in schedule
+      const scheduleDates = new Set(dateList);
+      const extraBookings = await Booking.find({ consultant: consult._id, date: { $nin: dateList } }).lean();
+      extraBookings.forEach((b: any) => {
+        const idx = dateSlots.findIndex((ds) => ds.date === b.date);
+        if (idx >= 0) return;
+        dateSlots.push({ date: b.date, slots: [{ start: b.start, end: b.end, booked: true }], available: true });
+      });
+      dateSlots = dateSlots.sort((a: any, b: any) => a.date.localeCompare(b.date));
+    }
+
+    const scheduleProp = {
+      days: Array.isArray(sched?.days)
+        ? sched.days.map((d: any) => ({ day: d.day, dayShort: (d.day || "").slice(0, 3), slots: d.slots || [], available: !!d.available }))
+        : [],
+      defaultSlots: [],
+      dateSlots,
+    };
 
     const c: any = {
       id: consult._id.toString(),
@@ -109,12 +142,11 @@ export default async function ConsultantPage({ params }: Props) {
             <div className="mt-6">
               <div className="bg-white rounded-2xl shadow p-6 border border-gray-100">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Reviews</h2>
-                <p className="text-sm text-gray-500">(Reviews will appear here. You can add a reviews component or API later.)</p>
               </div>
             </div>
 
             {/* Booking form after reviews */}
-            <BookingForm consultant={c} schedule={schedule || {}} />
+            <BookingForm consultant={c} schedule={scheduleProp} />
           </main>
         </div>
       </>

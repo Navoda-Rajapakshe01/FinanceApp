@@ -22,7 +22,74 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* calendar specific small adjustments for better readability */
+.calendar-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.calendar-cell .slot-line {
+  font-size: 0.78rem;
+  color: #111827; /* gray-900 stronger for readability */
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.calendar-cell .slot-more {
+  font-size: 0.72rem;
+  color: #6b7280; /* gray-500 */
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.btn-primary {
+  background-color: #4f46e5; /* indigo-600 */
+  color: white;
+}
+.btn-ghost {
+  background-color: transparent;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+}
+
+.calendar-cell:hover {
+  box-shadow: 0 6px 18px rgba(15,23,42,0.06);
+  transform: translateY(-1px);
+}
+
+.cell-quick-add {
+  position: relative;
+}
+.cell-quick-add button.quick-add {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #10b981; /* green-500 */
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  border: none;
 }
 
 input,

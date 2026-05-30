@@ -13,9 +13,9 @@ import {
   Camera,
 } from "lucide-react";
 import ClientsView from "@/components/consultants/ClientsView";
-import ScheduleView from "@/components/consultants/ScheduleView";
 import ProfileView from "@/components/consultants/ProfileView";
 import UpcomingConsultations from "@/components/consultants/UpcomingConsultations";
+import ScheduleManager from "@/components/consultants/ScheduleManager";
 
 interface Client {
   id: string;
@@ -32,6 +32,7 @@ interface Client {
 export default function ConsultantDashboard() {
   const [consultantName, setConsultantName] = useState("Consultant");
   const [consultantEmail, setConsultantEmail] = useState("");
+  const [consultantId, setConsultantId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("clients");
 
   useEffect(() => {
@@ -46,6 +47,9 @@ export default function ConsultantDashboard() {
       if (parsedUser.email) {
         setConsultantEmail(parsedUser.email);
       }
+      // try to read an id from stored user object
+      const maybeId = (parsedUser as any).id || (parsedUser as any)._id || (parsedUser as any).consultantId || (parsedUser as any).userId;
+      if (maybeId) setConsultantId(String(maybeId));
     } catch (error) {
       console.error("Failed to parse stored user:", error);
     }
@@ -99,13 +103,49 @@ export default function ConsultantDashboard() {
     },
   ]);
 
-  const upcomingConsultations = clients
-    .filter((client) => client.nextSession)
-    .map((client) => ({
-      clientName: client.name,
-      date: client.nextSession as string,
-      focus: client.focus,
-    }));
+  // load real bookings for consultant if token is available
+  const [upcomingConsultations, setUpcomingConsultations] = useState<{ clientName: string; date: string; focus: string }[]>([]);
+
+  React.useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) return;
+    // fetch bookings for next 30 days
+    const today = new Date();
+    const end = new Date();
+    end.setDate(end.getDate() + 30);
+    const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const q = new URLSearchParams({ start: toISO(today), end: toISO(end) });
+
+    fetch(`/api/consultants/bookings?${q.toString()}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => {
+        const bookings = data?.bookings || [];
+        const upcoming = bookings.map((b: any) => ({ clientName: b.clientName || "Client", date: `${b.date} ${b.start}`, focus: "Consultation" }));
+        setUpcomingConsultations(upcoming);
+
+        // produce a simple clients list grouped by email
+        const clientsMap: Record<string, Client> = {};
+        bookings.forEach((b: any) => {
+          const key = b.clientEmail || b.clientName || Math.random().toString();
+          if (!clientsMap[key]) {
+            clientsMap[key] = {
+              id: key,
+              name: b.clientName || "Client",
+              email: b.clientEmail || "",
+              focus: "Consultation",
+              service: "Consultation",
+              sessionsLeft: 0,
+              lastSession: b.date,
+              nextSession: b.date,
+              status: "Active",
+            };
+          }
+        });
+        const clientsArr = Object.values(clientsMap);
+        if (clientsArr.length) setClients(clientsArr);
+      })
+      .catch((e) => console.error("Failed to load bookings", e));
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -216,6 +256,7 @@ export default function ConsultantDashboard() {
             <Users size={18} />
             My Clients
           </button>
+          
           <button
             onClick={() => setActiveTab("schedule")}
             className={`flex items-center gap-2 px-4 py-3 font-semibold transition ${activeTab === "schedule"
@@ -223,9 +264,10 @@ export default function ConsultantDashboard() {
                 : "text-gray-600 hover:text-gray-900"
               }`}
           >
-            <Clock size={18} />
+            <Calendar size={18} />
             Schedule
           </button>
+
           <button
             onClick={() => setActiveTab("profile")}
             className={`flex items-center gap-2 px-4 py-3 font-semibold transition ${activeTab === "profile"
@@ -241,16 +283,18 @@ export default function ConsultantDashboard() {
         {/* Content Area */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
-          <div className="lg:col-span-2">
+            <div className={activeTab === "schedule" ? "lg:col-span-3" : "lg:col-span-2"}>
             {activeTab === "clients" && <ClientsView clients={clients} />}
-            {activeTab === "schedule" && <ScheduleView />}
+            {activeTab === "schedule" && <ScheduleManager consultantId={consultantId} />}
             {activeTab === "profile" && <ProfileView consultantName={consultantName} consultantEmail={consultantEmail} />}
           </div>
 
-          {/* Sidebar - Upcoming Consultations */}
-          <div className="lg:col-span-1">
-            <UpcomingConsultations consultations={upcomingConsultations} />
-          </div>
+          {/* Sidebar - Upcoming Consultations (hidden on Schedule tab) */}
+          {activeTab !== "schedule" && (
+            <div className="lg:col-span-1">
+              <UpcomingConsultations consultations={upcomingConsultations} />
+            </div>
+          )}
         </div>
       </main>
     </div>

@@ -1,184 +1,374 @@
-import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
-import { Schedule } from "@/models";
+import { Schedule, Booking } from "@/models";
 import { verifyToken } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
 
-async function requireConsultant(request: NextRequest) {
-  const auth = request.headers.get("authorization");
-  const token = auth?.split(" ")[1];
-  if (!token) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  const payload = verifyToken(token);
-  if (!payload || payload.accountType !== "consultant") return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  return { payload };
-}
+const defaultWeek = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+].map((d) => ({ day: d, available: false, slots: [] }));
 
+// GET
 export async function GET(request: NextRequest) {
   try {
-    const req = await requireConsultant(request);
-    if ((req as any).error) return (req as any).error;
-    const { payload }: any = req;
+    // allow public read when consultantId query param is provided (booking view)
+    const url = new URL(request.url);
+    const publicConsultantId = url.searchParams.get("consultantId");
+
+    const auth = request.headers.get("authorization") || "";
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : auth;
+    const payload = verifyToken(token);
 
     await connectDB();
 
-    let doc = await Schedule.findOne({ consultant: payload._id }).lean();
-    if (!doc) {
-      // create a default empty week
-      const days = [
-        { day: "Monday", dayShort: "M", slots: [], available: false },
-        { day: "Tuesday", dayShort: "T", slots: [], available: false },
-        { day: "Wednesday", dayShort: "W", slots: [], available: false },
-        { day: "Thursday", dayShort: "T", slots: [], available: false },
-        { day: "Friday", dayShort: "F", slots: [], available: false },
-        { day: "Saturday", dayShort: "S", slots: [], available: false },
-        { day: "Sunday", dayShort: "S", slots: [], available: false },
-      ];
-      const created = await Schedule.create({ consultant: payload._id, days, defaultSlots: [], dateSlots: [] });
-      doc = created.toObject();
+    let sched: any = null;
+
+    if (publicConsultantId) {
+      // public read-only schedule for the given consultant
+      sched = await Schedule.findOne({ consultant: publicConsultantId }).lean();
+    } else {
+      // private consultant view requires auth
+      if (!payload || payload.accountType !== "consultant") {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      sched = await Schedule.findOne({ consultant: payload._id }).lean();
+    }
+    const month = url.searchParams.get("month");
+
+    // MONTH VIEW
+    if (month) {
+      const dates = Array.isArray(sched?.dates)
+        ? sched.dates.filter((d: any) => d.date?.startsWith(month))
+        : [];
+
+      // exclude slots that already have bookings
+      try {
+        await connectDB();
+        const start = `${month}-01`;
+        const [y, m] = month.split("-");
+        const lastDay = new Date(Number(y), Number(m), 0).getDate();
+        const end = `${month}-${String(lastDay).padStart(2, "0")}`;
+
+        const bookings = await Booking.find({ consultant: sched?.consultant || null, date: { $gte: start, $lte: end } }).lean();
+
+        // annotate slots with `booked` flag instead of removing them
+        const datesOut = dates.map((d: any) => {
+          const booked = bookings.filter((b: any) => b.date === d.date);
+          const slots = (d.slots || []).map((s: any) => ({
+            start: s.start,
+            end: s.end,
+            booked: booked.some((b: any) => b.start === s.start && b.end === s.end),
+          }));
+          return { date: d.date, slots };
+        });
+
+        // Also include any booked-only dates that aren't present in the schedule
+        const scheduleDates = new Set(dates.map((d: any) => d.date));
+        const extraDatesMap: Record<string, any[]> = {};
+        bookings.forEach((b: any) => {
+          if (!scheduleDates.has(b.date)) {
+            extraDatesMap[b.date] = extraDatesMap[b.date] || [];
+            // avoid duplicates
+            if (!extraDatesMap[b.date].some((s: any) => s.start === b.start && s.end === b.end)) {
+              extraDatesMap[b.date].push({ start: b.start, end: b.end, booked: true });
+            }
+          }
+        });
+
+        const extras = Object.entries(extraDatesMap).map(([date, slots]) => ({ date, slots }));
+
+        const combined = [...datesOut, ...extras].sort((a: any, b: any) => a.date.localeCompare(b.date));
+
+        return NextResponse.json({ dates: combined });
+      } catch (e) {
+        console.warn("Failed to filter booked slots", e);
+        return NextResponse.json({
+          dates: dates.map((d: any) => ({ date: d.date, slots: d.slots || [] })),
+        });
+      }
     }
 
-    return NextResponse.json({ schedule: doc });
+    // FULL VIEW
+    return NextResponse.json({
+      schedule: sched
+        ? { days: sched.days || [], dates: sched.dates || [] }
+        : { days: defaultWeek, dates: [] },
+    });
   } catch (err) {
-    console.error(err);
+    console.error("Schedule GET error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
-export async function PUT(request: NextRequest) {
-  try {
-    const req = await requireConsultant(request);
-    if ((req as any).error) return (req as any).error;
-    const { payload }: any = req;
-
-    const body = await request.json();
-    const { days, defaultSlots, dateSlots } = body;
-    if (!Array.isArray(days) && !Array.isArray(defaultSlots) && !Array.isArray(dateSlots)) {
-      return NextResponse.json({ error: "payload must include days, defaultSlots or dateSlots arrays" }, { status: 400 });
-    }
-
-    await connectDB();
-
-    const setObj: any = { updatedAt: new Date() };
-    if (Array.isArray(days)) setObj.days = days;
-    if (Array.isArray(defaultSlots)) setObj.defaultSlots = defaultSlots;
-    if (Array.isArray(dateSlots)) setObj.dateSlots = dateSlots;
-
-    const updated = await Schedule.findOneAndUpdate(
-      { consultant: payload._id },
-      { $set: setObj },
-      { upsert: true, new: true }
-    ).lean();
-
-    return NextResponse.json({ schedule: updated });
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
+// POST (date slot add)
 export async function POST(request: NextRequest) {
   try {
-    const req = await requireConsultant(request);
-    if ((req as any).error) return (req as any).error;
-    const { payload }: any = req;
+    const auth = request.headers.get("authorization") || "";
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : auth;
+    const payload = verifyToken(token);
+
+    if (!payload || payload.accountType !== "consultant") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const body = await request.json();
-    const { day, date, start, end, defaultSlot } = body;
-    if (!start || !end) return NextResponse.json({ error: "start,end required" }, { status: 400 });
-
     await connectDB();
 
-    const doc: any = await Schedule.findOne({ consultant: payload._id });
-    if (!doc) return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
+    if (body?.date && body?.slot) {
+      const date = String(body.date);
+      const slot = {
+        start: String(body.slot.start),
+        end: String(body.slot.end),
+      };
 
-    if (defaultSlot) {
-      // add to defaultSlots
-      doc.defaultSlots = doc.defaultSlots || [];
-      doc.defaultSlots.push({ start, end });
-      doc.updatedAt = new Date();
-      await doc.save();
-      return NextResponse.json({ message: "Default slot added", schedule: doc });
-    }
+      const doc = await Schedule.findOne({ consultant: payload._id });
 
-    if (date) {
-      // add to dateSlots (by exact date string)
-      doc.dateSlots = doc.dateSlots || [];
-      let found = doc.dateSlots.find((d: any) => d.date === date);
-      if (!found) {
-        found = { date, slots: [], available: true };
-        doc.dateSlots.push(found);
+      if (!doc) {
+        const created = await Schedule.create({
+          consultant: payload._id,
+          dates: [{ date, slots: [slot] }],
+        });
+
+        return NextResponse.json({ dates: created.dates });
       }
-      found.slots.push({ start, end });
-      found.available = true;
-      doc.updatedAt = new Date();
-      await doc.save();
-      return NextResponse.json({ message: "Date slot added", schedule: doc });
+
+      const dates = Array.isArray(doc.dates) ? doc.dates : [];
+      const idx = dates.findIndex((d: any) => d.date === date);
+
+      if (idx >= 0) {
+        const existing = dates[idx].slots || [];
+        if (!existing.some((s: any) => s.start === slot.start && s.end === slot.end)) {
+          existing.push(slot);
+        }
+        dates[idx].slots = existing;
+      } else {
+        dates.push({ date, slots: [slot] });
+      }
+
+      await Schedule.updateOne(
+        { consultant: payload._id },
+        { $set: { dates } },
+        { upsert: true }
+      );
+
+      return NextResponse.json({
+        dates: dates.map((d: any) => ({
+          date: d.date,
+          slots: d.slots || [],
+        })),
+      });
     }
 
-    if (day) {
-      const found = doc.days.find((d: any) => d.day === day);
-      if (!found) return NextResponse.json({ error: "Day not found" }, { status: 404 });
-      found.slots.push({ start, end });
-      found.available = true;
-      doc.updatedAt = new Date();
-      await doc.save();
-      return NextResponse.json({ message: "Slot added", schedule: doc });
-    }
-
-    return NextResponse.json({ error: "invalid payload" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   } catch (err) {
-    console.error(err);
+    console.error("Schedule POST error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
-export async function DELETE(request: NextRequest) {
+// PATCH
+export async function PATCH(request: NextRequest) {
   try {
-    const req = await requireConsultant(request);
-    if ((req as any).error) return (req as any).error;
-    const { payload }: any = req;
+    const auth = request.headers.get("authorization") || "";
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : auth;
+    const payload = verifyToken(token);
+
+    if (!payload || payload.accountType !== "consultant") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const body = await request.json();
-    const { day, index, date, defaultIndex } = body;
-    if (typeof index !== "number" && typeof defaultIndex !== "number" && !date) return NextResponse.json({ error: "invalid payload" }, { status: 400 });
+    const { op } = body || {};
+
+    if (!op) {
+      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    }
+
+    await connectDB();
+    const doc = await Schedule.findOne({ consultant: payload._id });
+
+    const days = doc?.days || [];
+    const dates = doc?.dates || [];
+
+     // APPLY COMMON (FIXED)
+    if (op === "applyCommon") {
+      const slots = Array.isArray(body.slots) ? body.slots : [];
+      const month = body.month;
+
+      if (!month || !slots.length) {
+        return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+      }
+
+      const startDate = new Date(month + "-01");
+      const endDate = new Date(
+        startDate.getFullYear(),
+        startDate.getMonth() + 1,
+        0
+      );
+
+      const weekdayNames = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ];
+
+      const newMap: Record<string, any[]> = {};
+
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        const iso = d.toISOString().slice(0, 10);
+        const dayIndex = d.getDay();
+
+        const matched = slots.filter((s: any) =>
+          Array.isArray(s.days) ? s.days.includes(dayIndex) : false
+        );
+
+        if (!matched.length) continue;
+
+        newMap[iso] = newMap[iso] || [];
+
+        matched.forEach((m: any) => {
+          const slot = { start: m.start, end: m.end };
+
+          if (!newMap[iso].some((x) => x.start === slot.start && x.end === slot.end)) {
+            newMap[iso].push(slot);
+          }
+        });
+      }
+
+      // merge
+      const merged = [...dates];
+
+      Object.entries(newMap).forEach(([date, slotsArr]) => {
+        const idx = merged.findIndex((d: any) => d.date === date);
+
+        if (idx >= 0) {
+          const existing = merged[idx].slots || [];
+
+          slotsArr.forEach((s: any) => {
+            if (!existing.some((e: any) => e.start === s.start && e.end === s.end)) {
+              existing.push(s);
+            }
+          });
+
+          merged[idx].slots = existing;
+        } else {
+          merged.push({ date, slots: slotsArr });
+        }
+      });
+
+      await Schedule.updateOne(
+        { consultant: payload._id },
+        { $set: { dates: merged } },
+        { upsert: true }
+      );
+
+      return NextResponse.json({
+        dates: merged.map((d: any) => ({
+          date: d.date,
+          slots: d.slots || [],
+        })),
+      });
+    }
+
+     // DATE OPERATIONS
+    if (body?.date) {
+      const date = String(body.date);
+      const slot = body.slot;
+
+      const idx = dates.findIndex((d: any) => d.date === date);
+
+      if (op === "add") {
+        const newSlot = { start: slot.start, end: slot.end };
+
+        if (idx >= 0) {
+          const arr = dates[idx].slots || [];
+          if (!arr.some((s: any) => s.start === newSlot.start && s.end === newSlot.end)) {
+            arr.push(newSlot);
+          }
+          dates[idx].slots = arr;
+        } else {
+          dates.push({ date, slots: [newSlot] });
+        }
+      }
+
+      if (op === "edit") {
+        const slotIndex = body.slotIndex;
+        if (idx < 0) {
+          return NextResponse.json({ error: "Date not found" }, { status: 400 });
+        }
+
+        dates[idx].slots[slotIndex] = slot;
+      }
+
+      await Schedule.updateOne(
+        { consultant: payload._id },
+        { $set: { dates } },
+        { upsert: true }
+      );
+
+      return NextResponse.json({
+        dates: dates.map((d: any) => ({
+          date: d.date,
+          slots: d.slots || [],
+        })),
+      });
+    }
+
+    return NextResponse.json({ error: "Unknown operation" }, { status: 400 });
+  } catch (err) {
+    console.error("Schedule PATCH error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+//DELETE
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = request.headers.get("authorization") || "";
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : auth;
+    const payload = verifyToken(token);
+
+    if (!payload || payload.accountType !== "consultant") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { date, slotIndex } = body;
 
     await connectDB();
 
-    const doc: any = await Schedule.findOne({ consultant: payload._id });
-    if (!doc) return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
+    const doc = await Schedule.findOne({ consultant: payload._id });
+    if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    if (typeof defaultIndex === "number") {
-      if (!doc.defaultSlots || defaultIndex < 0 || defaultIndex >= doc.defaultSlots.length) return NextResponse.json({ error: "Invalid default index" }, { status: 400 });
-      doc.defaultSlots.splice(defaultIndex, 1);
-      doc.updatedAt = new Date();
-      await doc.save();
-      return NextResponse.json({ message: "Default slot removed", schedule: doc });
+    const dates = doc.dates || [];
+    const idx = dates.findIndex((d: any) => d.date === date);
+
+    if (idx >= 0) {
+      dates[idx].slots.splice(slotIndex, 1);
+
+      await Schedule.updateOne(
+        { consultant: payload._id },
+        { $set: { dates } }
+      );
     }
 
-    if (date) {
-      const found = doc.dateSlots.find((d: any) => d.date === date);
-      if (!found) return NextResponse.json({ error: "Date not found" }, { status: 404 });
-      if (index < 0 || index >= found.slots.length) return NextResponse.json({ error: "Invalid index" }, { status: 400 });
-      found.slots.splice(index, 1);
-      if (found.slots.length === 0) found.available = false;
-      doc.updatedAt = new Date();
-      await doc.save();
-      return NextResponse.json({ message: "Date slot removed", schedule: doc });
-    }
-
-    if (day) {
-      const found = doc.days.find((d: any) => d.day === day);
-      if (!found) return NextResponse.json({ error: "Day not found" }, { status: 404 });
-      if (index < 0 || index >= found.slots.length) return NextResponse.json({ error: "Invalid index" }, { status: 400 });
-      found.slots.splice(index, 1);
-      if (found.slots.length === 0) found.available = false;
-      doc.updatedAt = new Date();
-      await doc.save();
-      return NextResponse.json({ message: "Slot removed", schedule: doc });
-    }
-
-    return NextResponse.json({ error: "invalid payload" }, { status: 400 });
+    return NextResponse.json({
+      dates: dates.map((d: any) => ({
+        date: d.date,
+        slots: d.slots || [],
+      })),
+    });
   } catch (err) {
-    console.error(err);
+    console.error("Schedule DELETE error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

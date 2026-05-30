@@ -70,7 +70,7 @@ export default function AddExpenseModal({
         return;
       }
 
-      const response = await fetch("/api/expense/expense-categories", {
+      const response = await fetch("/api/personal/expense/expense-categories", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -257,7 +257,7 @@ export default function AddExpenseModal({
         return;
       }
 
-      const response = await fetch("/api/expense/expense-categories", {
+      const response = await fetch("/api/personal/expense/expense-categories", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
