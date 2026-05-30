@@ -12,7 +12,7 @@ import OverviewView from "@/components/personal/dashboard/OverviewView";
 import ExpensesView from "@/components/personal/expenses/ExpensesView";
 import IncomesView from "@/components/personal/incomes/IncomesView";
 import GoalsView from "@/components/personal/goals/GoalsView";
-import InsightsView from "@/components/personal/dashboard/InsightsView";
+import InsightsView from "@/components/personal/dashboard/insightsview";
 import ConsultantsView from "@/components/personal/dashboard/ConsultantsView";
 
 export default function DashboardPage() {
