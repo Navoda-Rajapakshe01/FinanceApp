@@ -34,12 +34,12 @@ export const consultantSchema = new mongoose.Schema(
     bio: {
       type: String,
       default: "",
-      required: true,
+      required: false,
     },
     specializations: {
       type: [String],
       default: [],
-      required: true,
+      required: false,
     },
     hourlyRate: {
       type: Number,

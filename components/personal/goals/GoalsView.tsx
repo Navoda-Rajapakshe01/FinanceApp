@@ -13,6 +13,8 @@ interface Goal {
 	warningLimit?: number;
 	deadline: string;
 	category: string;
+	totalSpent?: number;
+	status?: "active" | "achieved" | "lost";
 }
 
 export default function GoalsView() {
@@ -44,7 +46,11 @@ export default function GoalsView() {
 				setGoalError(data.error || "Failed to load goals");
 				return;
 			}
-			setGoals(data.goals || []);
+			const fetched = data.goals || [];
+			// sort: active first, then lost, then achieved (achieved at bottom)
+			const order = { active: 0, lost: 1, achieved: 2 } as Record<string, number>;
+			fetched.sort((a: any, b: any) => (order[a.status || 'active'] - order[b.status || 'active']));
+			setGoals(fetched);
 		} catch (error) {
 			console.error("Failed to fetch goals:", error);
 			setGoalError("Failed to load goals");
@@ -233,6 +239,15 @@ export default function GoalsView() {
 												</p>
 												{goal.warningLimit !== undefined && (
 													<p className="text-sm text-yellow-700 mt-1">Warning at: LKR {formatCurrency(goal.warningLimit)}</p>
+												)}
+												{typeof goal.totalSpent === 'number' && (
+													<p className="text-sm text-gray-600 mt-1">Spent: LKR {formatCurrency(goal.totalSpent)}</p>
+												)}
+												{goal.status === 'achieved' && (
+													<span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Achieved</span>
+												)}
+												{goal.status === 'lost' && (
+													<span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">Lost</span>
 												)}
 											</div>
 												<div className="flex items-center gap-2">

@@ -1,6 +1,6 @@
 import { connectDB } from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
-import { Goal } from "@/models";
+import { Goal, Expense } from "@/models";
 import { NextRequest, NextResponse } from "next/server";
 
 function getAuthPayload(request: NextRequest) {
@@ -31,16 +31,74 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .lean();
 
-    return NextResponse.json({
-      goals: goals.map((g) => ({
-        id: g._id.toString(),
-        title: g.title,
-        category: g.category,
-        targetAmount: g.targetAmount,
-        warningLimit: g.warningLimit,
-        deadline: g.deadline,
-      })),
-    });
+    const nowDate = new Date();
+
+    const enriched = [];
+    for (const g of goals) {
+      try {
+        // Determine period: from goal creation date to deadline (inclusive)
+        const startDate = g.createdAt ? new Date(g.createdAt).toISOString().split("T")[0] : null;
+        const endDate = g.deadline ? String(g.deadline).trim() : null;
+
+        let totalSpent = 0;
+        if (startDate && endDate) {
+          const agg = await Expense.aggregate([
+            {
+              $match: {
+                userId: payload._id,
+                accountType: payload.accountType,
+                category: g.category,
+                date: { $gte: startDate, $lte: endDate },
+              },
+            },
+            { $group: { _id: null, total: { $sum: "$amount" } } },
+          ]);
+          totalSpent = (agg && agg[0] && agg[0].total) ? Number(agg[0].total) : 0;
+        }
+
+        // Determine status:
+        // - If totalSpent already exceeds targetAmount -> lost immediately
+        // - Else if deadline passed -> achieved
+        // - Otherwise -> active
+        let status = "active";
+        const target = Number(g.targetAmount || 0);
+        if (totalSpent > target) {
+          status = "lost";
+        } else if (g.deadline) {
+          const deadlineDate = new Date(g.deadline + "T23:59:59Z");
+          if (nowDate > deadlineDate) {
+            status = "achieved";
+          } else {
+            status = "active";
+          }
+        }
+
+        enriched.push({
+          id: g._id.toString(),
+          title: g.title,
+          category: g.category,
+          targetAmount: g.targetAmount,
+          warningLimit: g.warningLimit,
+          deadline: g.deadline,
+          totalSpent,
+          status,
+        });
+      } catch (e) {
+        console.error("Failed to compute goal totals for goal", g._id, e);
+        enriched.push({
+          id: g._id.toString(),
+          title: g.title,
+          category: g.category,
+          targetAmount: g.targetAmount,
+          warningLimit: g.warningLimit,
+          deadline: g.deadline,
+          totalSpent: 0,
+          status: "active",
+        });
+      }
+    }
+
+    return NextResponse.json({ goals: enriched });
   } catch (error) {
     console.error("Fetch goals error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

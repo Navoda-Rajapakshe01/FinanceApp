@@ -8,3 +8,5 @@ export { Month, monthSchema } from "./month";
 export { Goal, goalSchema } from "./goal";
 export { Booking } from "./booking";
 export { Schedule } from "./schedule";
+export { Review } from "./review";
+export { Notification } from "./notification";

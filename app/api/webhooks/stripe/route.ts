@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { connectDB } from "@/lib/db";
 import { Booking } from "@/models";
+import { notifyConsultant } from "@/lib/notifications";
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY || "";
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
-const stripe = new Stripe(stripeSecret, { apiVersion: "2022-11-15" });
+const stripe = new Stripe(stripeSecret, { apiVersion: "2026-04-22.dahlia" });
 
 export async function POST(req: Request) {
   const payload = await req.text();
@@ -69,6 +70,24 @@ export async function POST(req: Request) {
             });
             const saved = await booking.save();
             console.log("Created booking from Stripe session", saved._id);
+            try {
+              const payload = (saved && typeof saved.toObject === "function") ? saved.toObject() : JSON.parse(JSON.stringify(saved));
+              const who = clientName || clientEmail || "A client";
+              const when = date ? `${date} ${start || ""}`.trim() : "";
+              const message = `${who} has booked an appointment${when ? ` on ${when}` : ""}`;
+
+              try {
+                const { Notification } = await import("@/models");
+                const note = new Notification({ consultant: consultantId, recipientId: String(consultantId), recipientType: "consultant", type: "booking.created", message, data: payload });
+                const savedNote = await note.save();
+                // emit the notification to connected SSE clients
+                try { notifyConsultant(consultantId, { type: "notification.created", notification: savedNote.toObject ? savedNote.toObject() : JSON.parse(JSON.stringify(savedNote)) }); } catch (e) {}
+              } catch (e) {
+                console.error("Failed to persist notification:", e);
+              }
+            } catch (e) {
+              console.error("Failed to notify consultant via SSE:", e);
+            }
           } else {
             console.log("Booking already exists for session", session.id);
           }

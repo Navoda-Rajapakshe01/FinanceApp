@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Header from "@/components/Header";
+import Toast from "@/components/Toast";
 import {
   Users,
   Calendar,
@@ -55,6 +56,8 @@ export default function ConsultantDashboard() {
     }
   }, []);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -67,89 +70,105 @@ export default function ConsultantDashboard() {
     }
   };
 
-  const [clients, setClients] = useState<Client[]>([
-    {
-      id: "1",
-      name: "Priya Jayawardena",
-      email: "priya.jayawardena@example.com",
-      focus: "Retirement Planning",
-      service: "Focus",
-      sessionsLeft: 5,
-      lastSession: "11/20/2024",
-      nextSession: "12/5/2024",
-      status: "Active",
-    },
-    {
-      id: "2",
-      name: "Kasun Perera",
-      email: "kasun.perera@example.com",
-      focus: "Investment Portfolio",
-      service: "Focus",
-      sessionsLeft: 8,
-      lastSession: "11/18/2024",
-      nextSession: "12/1/2024",
-      status: "Active",
-    },
-    {
-      id: "3",
-      name: "Nimal Silva",
-      email: "nimal.silva@example.com",
-      focus: "Debt Management",
-      service: "Focus",
-      sessionsLeft: 12,
-      lastSession: "11/22/2024",
-      nextSession: "11/30/2024",
-      status: "Active",
-    },
-  ]);
+  const [clients, setClients] = useState<Client[]>([]);
 
   // load real bookings for consultant if token is available
   const [upcomingConsultations, setUpcomingConsultations] = useState<{ clientName: string; date: string; focus: string }[]>([]);
 
   React.useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (!token) return;
-    // fetch bookings for next 30 days
-    const today = new Date();
-    const end = new Date();
-    end.setDate(end.getDate() + 30);
+    // fetch bookings for next 30 days using an auth token; if token isn't available yet,
+    // listen for it being set in localStorage and retry.
     const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const q = new URLSearchParams({ start: toISO(today), end: toISO(end) });
 
-    fetch(`/api/consultants/bookings?${q.toString()}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
-      .then((data) => {
-        const bookings = data?.bookings || [];
-        const upcoming = bookings.map((b: any) => ({ clientName: b.clientName || "Client", date: `${b.date} ${b.start}`, focus: "Consultation" }));
-        setUpcomingConsultations(upcoming);
+    const fetchBookingsForToken = (token: string | null) => {
+      if (!token) return;
+      const today = new Date();
+      const end = new Date();
+      end.setDate(end.getDate() + 30);
+      const q = new URLSearchParams({ start: toISO(today), end: toISO(end) });
 
-        // produce a simple clients list grouped by email
-        const clientsMap: Record<string, Client> = {};
-        bookings.forEach((b: any) => {
-          const key = b.clientEmail || b.clientName || Math.random().toString();
-          if (!clientsMap[key]) {
-            clientsMap[key] = {
-              id: key,
-              name: b.clientName || "Client",
-              email: b.clientEmail || "",
-              focus: "Consultation",
-              service: "Consultation",
-              sessionsLeft: 0,
-              lastSession: b.date,
-              nextSession: b.date,
-              status: "Active",
-            };
-          }
-        });
-        const clientsArr = Object.values(clientsMap);
-        if (clientsArr.length) setClients(clientsArr);
-      })
-      .catch((e) => console.error("Failed to load bookings", e));
+      fetch(`/api/consultants/bookings?${q.toString()}`, { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => r.json())
+        .then((data) => {
+          const bookings = data?.bookings || [];
+          const upcoming = bookings.map((b: any) => ({ clientName: b.clientName || "Client", date: `${b.date} ${b.start}`, focus: "Consultation" }));
+          setUpcomingConsultations(upcoming);
+
+          // produce a simple clients list grouped by email
+          const clientsMap: Record<string, Client> = {};
+          bookings.forEach((b: any) => {
+            const key = b.clientEmail || b.clientName || Math.random().toString();
+            if (!clientsMap[key]) {
+              clientsMap[key] = {
+                id: key,
+                name: b.clientName || "Client",
+                email: b.clientEmail || "",
+                focus: "Consultation",
+                service: "Consultation",
+                sessionsLeft: 0,
+                lastSession: b.date,
+                nextSession: b.date,
+                status: "Active",
+              };
+            }
+          });
+          const clientsArr = Object.values(clientsMap);
+          if (clientsArr.length) setClients(clientsArr);
+        })
+        .catch((e) => console.error("Failed to load bookings", e));
+    };
+
+    const currentToken = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    fetchBookingsForToken(currentToken);
+
+    const onTokenStorage = (e: StorageEvent) => {
+      if (e.key === "token" && e.newValue) {
+        fetchBookingsForToken(e.newValue);
+      }
+    };
+
+    window.addEventListener("storage", onTokenStorage);
+    return () => window.removeEventListener("storage", onTokenStorage);
   }, []);
+
+  // SSE: listen for consultant notifications
+  React.useEffect(() => {
+    if (!consultantId) return;
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource(`/api/consultants/${consultantId}/notifications`);
+      es.onmessage = (ev) => {
+        try {
+          const payload = JSON.parse(ev.data || "{}");
+          if (payload?.type === "booking.created") {
+            const b = payload.booking || {};
+            const name = b.clientName || b.clientEmail || "Client";
+            const date = b.date ? `${b.date} ${b.start || ""}` : "";
+            setToastMessage(`New booking from ${name}${date ? ` — ${date}` : ""}`);
+            setToastOpen(true);
+            try { localStorage.setItem("bookingsCount", String(Number(localStorage.getItem("bookingsCount")||"0") + 1)); } catch {}
+            try { localStorage.setItem("bookingsUpdated", String(Date.now())); } catch {}
+          }
+        } catch (e) {
+          console.error("Failed to handle SSE message", e);
+        }
+      };
+      es.onerror = (e) => {
+        console.warn("SSE error", e);
+        // auto-reconnect is handled by EventSource in browsers
+      };
+    } catch (e) {
+      console.error("Failed to open SSE connection", e);
+    }
+
+    return () => {
+      try { es?.close(); } catch {}
+      es = null;
+    };
+  }, [consultantId]);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header - Same as user dashboard */}
       <Header />
 
       {/* Main Content */}
@@ -282,7 +301,6 @@ export default function ConsultantDashboard() {
 
         {/* Content Area */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
             <div className={activeTab === "schedule" ? "lg:col-span-3" : "lg:col-span-2"}>
             {activeTab === "clients" && <ClientsView clients={clients} />}
             {activeTab === "schedule" && <ScheduleManager consultantId={consultantId} />}
@@ -297,6 +315,7 @@ export default function ConsultantDashboard() {
           )}
         </div>
       </main>
+      <Toast isOpen={toastOpen} message={toastMessage} onClose={() => setToastOpen(false)} />
     </div>
   );
 }

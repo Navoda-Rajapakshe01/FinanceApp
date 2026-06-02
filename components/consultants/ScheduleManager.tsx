@@ -200,17 +200,14 @@ export default function ScheduleManager({ consultantId }: { consultantId?: strin
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (token) headers.Authorization = `Bearer ${token}`;
-      console.debug("applyCommon: sending", slotsToApply);
       const res = await fetch(`/api/consultants/schedule`, {
         method: "PATCH",
         headers,
         body: JSON.stringify({ op: "applyCommon", month: monthKey, slots: slotsToApply }),
       });
       const text = await res.text();
-      console.debug("applyCommon: raw response", res.status, text);
       let parsed = null;
       try { parsed = text ? JSON.parse(text) : null; } catch (e) { /* ignore */ }
-      console.debug("applyCommon: parsed response", parsed);
       if (!res.ok) {
         console.error("applyCommon failed", res.status, parsed || text);
         showToast(`Apply failed: ${res.status} ${text}`, "error");
