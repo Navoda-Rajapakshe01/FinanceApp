@@ -31,6 +31,28 @@ export default function ConsultantsView() {
 	});
 	const [bookings, setBookings] = useState<any[]>([]);
 
+	const { upcomingBookings, completedBookings } = React.useMemo(() => {
+		const up: any[] = [];
+		const done: any[] = [];
+		const now = new Date();
+		(bookings || []).forEach((b: any) => {
+			try {
+				const dt = new Date(`${b.date}T${b.start}`);
+				if (isNaN(dt.getTime())) throw new Error("invalid date");
+				if (dt >= now) up.push(b);
+				else done.push(b);
+			} catch (e) {
+				// fallback: treat as upcoming
+				up.push(b);
+			}
+		});
+		up.sort((a, z) => new Date(`${a.date}T${a.start}`).getTime() - new Date(`${z.date}T${z.start}`).getTime());
+		done.sort((a, z) => new Date(`${z.date}T${z.start}`).getTime() - new Date(`${a.date}T${a.start}`).getTime());
+		return { upcomingBookings: up, completedBookings: done };
+	}, [bookings]);
+
+	const [showCompletedInBrowse, setShowCompletedInBrowse] = useState(false);
+
 	useEffect(() => {
 		const fetchConsultants = async () => {
 			setLoading(true);
@@ -119,7 +141,7 @@ export default function ConsultantsView() {
 									: "border border-gray-300 text-gray-700 hover:bg-gray-50"
 								}`}
 						>
-							My Appointments ({bookingsCount})
+							My Appointments ({upcomingBookings.length})
 						</button>
 					</div>
 				</div>
@@ -215,7 +237,7 @@ export default function ConsultantsView() {
 					// My Appointments
 				<div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
 					<h3 className="text-lg font-semibold text-gray-900 mb-4">My Appointments</h3>
-					{bookings.length === 0 ? (
+					{upcomingBookings.length === 0 ? (
 						<div className="flex flex-col items-center justify-center py-12">
 							<div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mb-4">
 								<Calendar size={40} className="text-purple-600" />
@@ -230,18 +252,75 @@ export default function ConsultantsView() {
 							>
 								Browse Consultants
 							</button>
+							{completedBookings.length > 0 && (
+								<button
+									onClick={() => setShowCompletedInBrowse((s) => !s)}
+									className="mt-4 text-sm text-gray-600 underline"
+								>
+									{showCompletedInBrowse ? `Hide completed appointments (${completedBookings.length})` : `Show completed appointments (${completedBookings.length})`}
+								</button>
+							)}
+
+							{showCompletedInBrowse && completedBookings.length > 0 && (
+								<div className="w-full max-w-xl mt-6">
+									<div className="bg-white rounded-lg border border-gray-100 p-4">
+										<h4 className="text-md font-semibold text-gray-900 mb-3">Completed</h4>
+										<div className="space-y-3">
+											{completedBookings.map((b: any) => (
+												<div key={b.id || `${b.date}-${b.start}-${b.consultantId || b.consultantName}` } className="p-3 border rounded-md flex items-center justify-between">
+													<div>
+														<div className="text-sm text-gray-500">{b.consultantName}</div>
+														<div className="font-medium text-gray-900">{b.date} • {b.start} — {b.end}</div>
+													</div>
+													<div className="text-sm text-gray-500">{b.status}</div>
+												</div>
+											))}
+										</div>
+									</div>
+								</div>
+							)}
 						</div>
 					) : (
-						<div className="space-y-3">
-							{bookings.map((b) => (
-								<div key={b.id} className="p-4 border rounded-md flex items-center justify-between">
-									<div>
-										<div className="text-sm text-gray-500">{b.consultantName}</div>
-										<div className="font-medium text-gray-900">{b.date} • {b.start} — {b.end}</div>
+						<div className="grid gap-6">
+							{/* Upcoming Bookings */}
+							<div className="bg-white rounded-lg border border-gray-100 p-4">
+								<h4 className="text-md font-semibold text-gray-900 mb-3">Upcoming</h4>
+								{upcomingBookings.length > 0 ? (
+									<div className="space-y-3">
+										{upcomingBookings.map((b: any) => (
+											<div key={b.id || `${b.date}-${b.start}-${b.consultantId || b.consultantName}`} className="p-3 border rounded-md flex items-center justify-between">
+												<div>
+													<div className="text-sm text-gray-500">{b.consultantName}</div>
+													<div className="font-medium text-gray-900">{b.date} • {b.start} — {b.end}</div>
+												</div>
+												<div className="text-sm text-gray-500">{b.status}</div>
+											</div>
+										))}
 									</div>
-									<div className="text-sm text-gray-500">{b.status}</div>
-								</div>
-							))}
+								) : (
+									<div className="text-sm text-gray-500">No upcoming appointments</div>
+								)}
+							</div>
+
+							{/* Completed Bookings */}
+							<div className="bg-white rounded-lg border border-gray-100 p-4">
+								<h4 className="text-md font-semibold text-gray-900 mb-3">Completed</h4>
+								{completedBookings.length > 0 ? (
+									<div className="space-y-3">
+										{completedBookings.map((b: any) => (
+											<div key={b.id || `${b.date}-${b.start}-${b.consultantId || b.consultantName}` } className="p-3 border rounded-md flex items-center justify-between">
+												<div>
+													<div className="text-sm text-gray-500">{b.consultantName}</div>
+													<div className="font-medium text-gray-900">{b.date} • {b.start} — {b.end}</div>
+												</div>
+												<div className="text-sm text-gray-500">{b.status}</div>
+											</div>
+										))}
+									</div>
+								) : (
+									<div className="text-sm text-gray-500">No completed appointments yet</div>
+								)}
+							</div>
 						</div>
 					)}
 				</div>

@@ -1,6 +1,7 @@
 import { connectDB } from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
-import { Expense } from "@/models";
+import { Expense, Goal } from "@/models";
+import { notifyRecipient } from "@/lib/notifications";
 import { NextRequest, NextResponse } from "next/server";
 
 function getAuthPayload(request: NextRequest) {
@@ -87,6 +88,50 @@ export async function POST(request: NextRequest) {
       date: String(date).trim(),
       amount: parsedAmount,
     });
+
+    // After creating expense, check any goals for this user/category that have warningLimit
+    try {
+      const goals = await Goal.find({ userId: payload._id, category: created.category, warningLimit: { $exists: true, $ne: null } }).lean();
+      if (goals && goals.length) {
+        for (const g of goals) {
+          try {
+            // limit aggregation to the goal period if deadline and createdAt exist
+            const startDate = g.createdAt ? new Date(g.createdAt).toISOString().split("T")[0] : null;
+            const endDate = g.deadline ? String(g.deadline).trim() : null;
+            const match: any = { userId: payload._id, category: created.category };
+            if (startDate && endDate) match.date = { $gte: startDate, $lte: endDate };
+            const agg = await Expense.aggregate([
+              { $match: match },
+              { $group: { _id: null, total: { $sum: "$amount" } } },
+            ]);
+            const total = (agg && agg[0] && agg[0].total) ? Number(agg[0].total) : 0;
+            const warning = Number(g.warningLimit || 0);
+            if (warning > 0 && total >= warning) {
+              // emit transient SSE for immediate toast; do not persist notification
+              const remaining = (g.targetAmount || 0) - total;
+              const message = `You're going to lose the goal "${g.title}" — spent LKR ${total.toFixed(2)} which meets/exceeds your warning limit of LKR ${warning.toFixed(2)}.`;
+              const transient = {
+                _id: `t_${Date.now()}`,
+                type: "goal.warning",
+                message,
+                data: { goalId: String(g._id), goalTitle: g.title, totalSpent: total, warningLimit: warning, remaining: remaining },
+                read: false,
+                createdAt: new Date().toISOString(),
+              };
+              try {
+                notifyRecipient("personal", String(payload._id), { type: "notification.created", notification: transient });
+              } catch (e) {
+                // ignore notify errors
+              }
+            }
+          } catch (e) {
+            console.error("Goal warning check failed:", e);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to check goals after expense create:", e);
+    }
 
     return NextResponse.json(
       {
@@ -221,6 +266,50 @@ export async function PUT(request: NextRequest) {
       },
       { new: true }
     );
+
+    // After updating expense, re-check goals for this user/category and send warnings if threshold reached
+    try {
+      const goals = await Goal.find({ userId: payload._id, category: updated.category, warningLimit: { $exists: true, $ne: null } }).lean();
+      if (goals && goals.length) {
+        for (const g of goals) {
+          try {
+            // limit aggregation to the goal period if deadline and createdAt exist
+            const startDate = g.createdAt ? new Date(g.createdAt).toISOString().split("T")[0] : null;
+            const endDate = g.deadline ? String(g.deadline).trim() : null;
+            const match: any = { userId: payload._id, category: updated.category };
+            if (startDate && endDate) match.date = { $gte: startDate, $lte: endDate };
+            const agg = await Expense.aggregate([
+              { $match: match },
+              { $group: { _id: null, total: { $sum: "$amount" } } },
+            ]);
+            const total = (agg && agg[0] && agg[0].total) ? Number(agg[0].total) : 0;
+            const warning = Number(g.warningLimit || 0);
+            if (warning > 0 && total >= warning) {
+              // emit transient SSE for immediate toast; do not persist notification
+              const remaining = (g.targetAmount || 0) - total;
+              const message = `You're going to lose the goal "${g.title}" — spent LKR ${total.toFixed(2)} which meets/exceeds your warning limit of LKR ${warning.toFixed(2)}.`;
+              const transient = {
+                _id: `t_${Date.now()}`,
+                type: "goal.warning",
+                message,
+                data: { goalId: String(g._id), goalTitle: g.title, totalSpent: total, warningLimit: warning, remaining: remaining },
+                read: false,
+                createdAt: new Date().toISOString(),
+              };
+              try {
+                notifyRecipient("personal", String(payload._id), { type: "notification.created", notification: transient });
+              } catch (e) {
+                // ignore notify errors
+              }
+            }
+          } catch (e) {
+            console.error("Goal warning check failed after update:", e);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to check goals after expense update:", e);
+    }
 
     return NextResponse.json(
       {

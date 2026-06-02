@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db";
 import { Consultant, Schedule, Booking } from "@/models";
 import Link from "next/link";
 import BookingForm from "@/components/consultants/BookingForm";
+import Reviews from "@/components/consultants/Reviews";
 import { Phone, Globe, Tag } from "lucide-react";
 
 type Props = { params: Promise<{ id: string }> };
@@ -138,10 +139,9 @@ export default async function ConsultantPage({ params }: Props) {
             </div>
             </div>
 
-            {/* Reviews placeholder */}
             <div className="mt-6">
               <div className="bg-white rounded-2xl shadow p-6 border border-gray-100">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Reviews</h2>
+                <Reviews consultantId={c.id} />
               </div>
             </div>
 

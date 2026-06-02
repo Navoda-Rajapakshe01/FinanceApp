@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
 
     const summary = { totalIncome, totalExpense, topCategories, largestExpense, goals };
 
-    const prompt = `You are a friendly financial coach. Given a user's last 30 days summary, provide up to 4 short, actionable monthly saving tips tailored to the data.
+    const prompt = `You are a friendly financial coach. Given a user's last 30 days summary, provide up to 8-10 short, actionable monthly saving tips tailored to the data.
   Requirements:
   - Use very simple, plain English suitable for readers who are not fluent in English.
   - Keep each tip short (one sentence, 8–20 words), avoid idioms and complex words.

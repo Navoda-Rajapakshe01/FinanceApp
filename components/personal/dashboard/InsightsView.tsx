@@ -1,9 +1,16 @@
 "use client";
 
 import React from "react";
-import { Lightbulb, RefreshCw, Copy } from "lucide-react";
+import { Lightbulb, RefreshCw, Copy, DollarSign, ArrowDown, ArrowUp, PieChart, Zap } from "lucide-react";
 
 export default function InsightsView() {
+	const formatMonthLabel = (prefix: string | null) => {
+		if (!prefix) return null;
+		const [y, m] = prefix.split("-");
+		const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+		const mi = Number(m) - 1;
+		return `${monthNames[mi] || m} ${y}`;
+	};
 	const [loading, setLoading] = React.useState(true);
 	const [error, setError] = React.useState<string | null>(null);
 	const [expenses, setExpenses] = React.useState<any[]>([]);
@@ -48,6 +55,8 @@ export default function InsightsView() {
 
 	const formatCurrency = (v: number) => v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+	const totalIncome = React.useMemo(() => incomes.reduce((s, i) => s + Number(i.amount || 0), 0), [incomes]);
+
 	const totalExpense = React.useMemo(() => expenses.reduce((s, e) => s + Number(e.amount || 0), 0), [expenses]);
 
 	const topCategories = React.useMemo(() => {
@@ -75,6 +84,13 @@ export default function InsightsView() {
 	}, [expenses]);
 
 	const [tips, setTips] = React.useState<string[] | null>(null);
+	const [analysis, setAnalysis] = React.useState<string | null>(null);
+	const [analysisLoading, setAnalysisLoading] = React.useState(false);
+	const [analysisMonth, setAnalysisMonth] = React.useState<string | null>(null);
+	const [monthTotalsState, setMonthTotalsState] = React.useState<any[] | null>(null);
+	const [analysisTotalsState, setAnalysisTotalsState] = React.useState<any | null>(null);
+	const [analysisTopCategories, setAnalysisTopCategories] = React.useState<any[] | null>(null);
+	const [analysisLargestExpense, setAnalysisLargestExpense] = React.useState<any | null>(null);
 
 	React.useEffect(() => {
 		let mounted = true;
@@ -96,6 +112,39 @@ export default function InsightsView() {
 			mounted = false;
 		};
 	}, [expenses, incomes, goals]);
+
+	React.useEffect(() => {
+		let mounted = true;
+		const fetchAnalysis = async () => {
+			setAnalysisLoading(true);
+			try {
+				const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+				const headers: HeadersInit | undefined = token ? { Authorization: `Bearer ${token}` } : undefined;
+				const res = await fetch(`/api/personal/insights/analysis`, { headers });
+				const json = await res.json().catch(() => ({}));
+				if (!mounted) return;
+				setAnalysis(json.analysis || null);
+				setAnalysisMonth(json.month || null);
+				setMonthTotalsState(json.monthTotals || null);
+				setAnalysisTotalsState(json.totals || null);
+				setAnalysisTopCategories(json.topCategories || null);
+				setAnalysisLargestExpense(json.largestExpense || null);
+			} catch (err) {
+				console.error("Failed to fetch analysis", err);
+			} finally {
+				if (mounted) setAnalysisLoading(false);
+			}
+		};
+
+		// fetch analysis when core data is loaded
+		if (!loading) {
+			void fetchAnalysis();
+		}
+
+		return () => {
+			mounted = false;
+		};
+	}, [loading, expenses, incomes]);
 
 	return (
 		<div>
@@ -161,6 +210,164 @@ export default function InsightsView() {
 										</div>
 									) : (
 										<p className="text-sm text-gray-500">No expenses yet</p>
+									)}
+								</div>
+							</div>
+						</div>
+					</div>
+
+
+					{/* AI Analysis report (styled) */}
+					<div className="mt-6">
+						<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+							{/* Metric cards */}
+							<div className="lg:col-span-2 grid grid-cols-3 gap-4">
+								<div className="bg-white p-4 rounded-xl border border-gray-100 shadow flex items-center gap-4">
+									<div className="p-3 bg-emerald-50 rounded-lg">
+										<DollarSign className="text-emerald-600" />
+									</div>
+									<div>
+										<div className="text-sm text-gray-500">Total Income (last month)</div>
+										<div className="text-lg font-semibold text-gray-900">LKR {formatCurrency(analysisTotalsState?.totalIncomes ?? totalIncome)}</div>
+									</div>
+								</div>
+
+								<div className="bg-white p-4 rounded-xl border border-gray-100 shadow flex items-center gap-4">
+									<div className="p-3 bg-rose-50 rounded-lg">
+										<ArrowDown className="text-rose-600" />
+									</div>
+									<div>
+										<div className="text-sm text-gray-500">Total Expenses (last month)</div>
+										<div className="text-lg font-semibold text-rose-600">LKR {formatCurrency(analysisTotalsState?.totalExpenses ?? totalExpense)}</div>
+									</div>
+								</div>
+
+								<div className="bg-white p-4 rounded-xl border border-gray-100 shadow flex items-center gap-4">
+									<div className="p-3 bg-sky-50 rounded-lg">
+										<ArrowUp className="text-sky-600" />
+									</div>
+									<div>
+										<div className="text-sm text-gray-500">Net (last month)</div>
+										<div className={`text-lg font-semibold ${(analysisTotalsState ? (analysisTotalsState.totalIncomes - analysisTotalsState.totalExpenses >= 0) : (totalIncome - totalExpense >= 0)) ? "text-emerald-600" : "text-rose-600"}`}>LKR {formatCurrency((analysisTotalsState ? (analysisTotalsState.totalIncomes - analysisTotalsState.totalExpenses) : (totalIncome - totalExpense)))}</div>
+									</div>
+								</div>
+							</div>
+
+							{/* Analysis card */}
+							<div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-100 shadow">
+										<div className="flex items-start gap-4">
+									<div className="p-3 bg-amber-100 rounded-md">
+										<Zap className="text-amber-600" />
+									</div>
+									<div className="flex-1">
+												<div className="flex items-center justify-between">
+													<div>
+														<h3 className="font-semibold text-gray-900">AI Financial Analysis</h3>
+														{analysisMonth ? <div className="text-xs text-gray-500">Analysis for {formatMonthLabel(analysisMonth)}</div> : <p className="text-sm text-gray-500">Personalized insights and a short action plan</p>}
+													</div>
+													<p className="text-sm text-gray-500">Personalized insights and a short action plan</p>
+												</div>
+										<div className="mt-4">
+											{analysisLoading ? (
+												<div className="text-sm text-gray-600">Generating analysis…</div>
+											) : analysis ? (
+												<div className="prose prose-sm text-gray-700 max-w-none">
+													{(() => {
+														// Render the AI analysis without raw markdown asterisks or bullet markers.
+														const lines = analysis.split("\n").map((l) => l.trim()).filter(Boolean);
+
+														// Helper to remove inline markdown emphasis markers
+														const cleanInline = (s: string) => s.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*(.+?)\*/g, "$1").replace(/^[\*\-\u2022]\s+/, "");
+
+														// If analysis contains numbered items (1., 2., etc.), render as ordered list
+														const numbered = lines.filter((l) => /^\d+\.\s+/.test(l));
+														if (numbered.length >= 1) {
+															return (
+																<ol className="list-decimal ml-5 space-y-2 text-sm text-gray-700">
+																	{numbered.map((l, i) => (
+																		<li key={i} className="leading-snug">{cleanInline(l.replace(/^\d+\.\s+/, ""))}</li>
+																	))}
+																</ol>
+															);
+														}
+
+														// Fallback: render paragraphs with bullets/asterisks removed
+														return lines.map((l, i) => (
+															<p key={i} className="text-sm text-gray-700">{cleanInline(l)}</p>
+														));
+													})()}
+												</div>
+											) : (
+												<div className="text-sm text-gray-500">No analysis available. Add transactions or regenerate.</div>
+											)}
+										</div>
+										<div className="mt-4 flex items-center gap-3 justify-end">
+											<button
+												className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/90 border border-gray-200 rounded-md text-sm text-gray-700 hover:shadow"
+												onClick={async () => {
+													setAnalysis(null);
+													setAnalysisLoading(true);
+													try {
+														const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+														const headers: HeadersInit | undefined = token ? { Authorization: `Bearer ${token}` } : undefined;
+														const res = await fetch(`/api/personal/insights/analysis`, { headers });
+														const json = await res.json().catch(() => ({}));
+														setAnalysis(json.analysis || null);
+														setAnalysisMonth(json.month || null);
+														setMonthTotalsState(json.monthTotals || null);
+														setAnalysisTotalsState(json.totals || null);
+														setAnalysisTopCategories(json.topCategories || null);
+														setAnalysisLargestExpense(json.largestExpense || null);
+													} catch (err) {
+														console.error(err);
+													} finally {
+														setAnalysisLoading(false);
+													}
+												}}
+											>
+												<RefreshCw className="w-4 h-4" />
+												<span>Regenerate</span>
+											</button>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							{/* Right column: top categories & largest expense */}
+							<div className="bg-white rounded-2xl p-6 border border-gray-100 shadow">
+								<h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2"><PieChart /> Top Categories</h4>
+								{(analysisTopCategories && analysisTopCategories.length) ? (
+									<ul className="space-y-3">
+										{(analysisTopCategories || topCategories).map((c: any) => {
+											const baseTotal = (analysisTotalsState?.totalExpenses ?? totalExpense) || 1;
+											const pct = Math.round((c.amount / baseTotal) * 100);
+											return (
+												<li key={c.category} className="space-y-1">
+													<div className="flex items-center justify-between">
+														<div className="text-sm font-medium text-gray-800">{c.category}</div>
+														<div className="text-sm text-gray-700">LKR {formatCurrency(c.amount)}</div>
+													</div>
+													<div className="h-2 bg-gray-100 rounded-full overflow-hidden mt-1">
+														<div className="h-2 bg-amber-400 rounded-full" style={{ width: `${pct}%` }} />
+														</div>
+													</li>
+												);
+											})}
+									</ul>
+								) : (
+									<div className="text-sm text-gray-500">No categories yet.</div>
+								)}
+
+								<div className="mt-4 border-t pt-4">
+									<h5 className="text-sm text-gray-600">Largest Expense</h5>
+									{(analysisLargestExpense || largestExpense) ? (
+										<div className="mt-2">
+											<div className="text-sm font-medium">{(analysisLargestExpense || largestExpense).title || (analysisLargestExpense || largestExpense).category}</div>
+											<div className="text-xs text-gray-500">{new Date((analysisLargestExpense || largestExpense).date).toLocaleDateString()}</div>
+											<div className="mt-1 text-lg font-semibold text-rose-600">LKR {formatCurrency(Number((analysisLargestExpense || largestExpense).amount || 0))}</div>
+										</div>
+									) : (
+										<div className="text-sm text-gray-500">No expenses yet</div>
 									)}
 								</div>
 							</div>
